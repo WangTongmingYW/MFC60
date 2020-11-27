@@ -1,0 +1,58 @@
+// --------------------------------------------------------------------------------------------------
+// [01] MyTray.h
+class CMyTray  
+{
+public:
+	CMyTray();
+	virtual ~CMyTray();
+
+	UINT m_Icon;
+	LPCTSTR m_szTip;
+	UINT m_uID;
+
+	BOOL ToTray();
+	BOOL DeleteNotifyIcon();
+
+};
+// --------------------------------------------------------------------------------------------------
+// [02] MyTray.cpp
+CMyTray::CMyTray()
+{
+	m_Icon=IDR_MAINFRAME;
+	m_szTip=_T("粘贴板迷你信使");
+	m_uID=m_Icon;
+}
+
+CMyTray::~CMyTray()
+{
+
+}
+
+BOOL CMyTray::ToTray() //UINT Icon,LPCTSTR szTip,UINT uID)
+{
+	NOTIFYICONDATA nid; 
+	nid.cbSize=(DWORD)sizeof(NOTIFYICONDATA); 
+	nid.hWnd=PD->GetSafeHwnd(); 
+	nid.uID=m_uID;//IDR_MAINFRAME; 
+	nid.uFlags=NIF_ICON|NIF_MESSAGE|NIF_TIP ; 
+	nid.uCallbackMessage=WM_SHOWTASK;//自定义的消息名称 
+	nid.hIcon=LoadIcon(AfxGetInstanceHandle(),MAKEINTRESOURCE(m_Icon));//IDR_MAINFRAME)); 
+	_tcscpy(nid.szTip,m_szTip);//"电子作业快递");//信息提示条  // <64
+	Shell_NotifyIcon(NIM_ADD,&nid);//在托盘区添加图标 
+	return TRUE;
+}
+BOOL CMyTray::DeleteNotifyIcon() //UINT Icon,LPCTSTR sztip,UINT uID)
+{
+	HICON hIcon;
+    hIcon=AfxGetApp()->LoadIcon(m_Icon);
+    NOTIFYICONDATA nid;
+    nid.cbSize=sizeof(NOTIFYICONDATA);
+    nid.hIcon=hIcon;
+    //CWnd *pWnd=AfxGetMainWnd();
+    nid.hWnd=PD->GetSafeHwnd();
+    _tcscpy(nid.szTip,m_szTip); // <64
+	nid.uCallbackMessage=WM_SHOWTASK;//自定义的消息名称 
+    nid.uFlags=NIF_MESSAGE|NIF_ICON|NIF_TIP;
+    nid.uID=m_uID;
+	return Shell_NotifyIcon(NIM_DELETE,&nid);
+}

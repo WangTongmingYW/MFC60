@@ -1,0 +1,356 @@
+// --------------------------------------------------------------------------------------------------
+// [01] 弹出对话框，输入数据，数据退出时可以保存，数据进入可从盘中文件进行初始化
+// InputDlg.h
+#define COUNT_PARAM 4
+typedef enum _ENUM_PARAM_INDEX{
+	epi_send=0,
+	epi_recept,
+	epi_smtp, // Simple Mail Transmit Protocal
+	epi_authorized,
+	epi_name
+}ENUM_PARAM_INDEX;
+
+#ifndef STRUCT_ENCRYPT_DEFINED
+#define STRUCT_ENCRYPT_DEFINED
+typedef struct _STRUCT_ENCRYPT{
+	int size;
+	TCHAR* pBuf;
+}STRUCT_ENCRYPT;
+#endif //!STRUCT_ENCRYPT_DEFINED
+
+#include "XPButton.h" // 彩色显示按钮
+#define COUNT_BUTTON 3
+/////////////////////////////////////////////////////////////////////////////
+// CInputDlg dialog
+
+class CInputDlg : public CDialog
+{
+// Construction
+public:
+	CInputDlg(CWnd* pParent = NULL);   // standard constructor
+
+	CXPButton m_XPButton[COUNT_BUTTON];
+	CStatic* m_pStaticParam[COUNT_PARAM];
+	CEdit* m_pEditParam[COUNT_PARAM];
+
+	BOOL m_bCheckInput[COUNT_PARAM];
+	BOOL CheckEmailAccountSend();
+	BOOL CheckEmailAccountRecept();
+	BOOL CheckEmailSmtpAddr();
+	BOOL CheckEmailAuthorizedCode();
+
+// Dialog Data
+	//{{AFX_DATA(CInputDlg)
+	enum { IDD = IDD_DIALOG_INPUT };
+	CString	m_strAccountSend;
+	CString	m_strAccountRecept;
+	CString	m_strSmtpAddr;
+	CString	m_strAuthorizedCode;
+	//}}AFX_DATA
+
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CInputDlg)
+	protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+
+	// Generated message map functions
+	//{{AFX_MSG(CInputDlg)
+	virtual BOOL OnInitDialog();
+	afx_msg void OnClose();
+	afx_msg void OnKillfocusEditAccountSend();
+	afx_msg void OnKillfocusEditAccountRecept();
+	afx_msg void OnKillfocusEditSmtpAddr();
+	afx_msg void OnKillfocusEditAuthorizedCode();
+	afx_msg void OnButtonSave();
+	virtual void OnOK();
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+// --------------------------------------------------------------------------------------------------
+// [02] InputDlg.cpp
+
+
+CInputDlg::CInputDlg(CWnd* pParent /*=NULL*/)
+	: CDialog(CInputDlg::IDD, pParent)
+{
+	//{{AFX_DATA_INIT(CInputDlg)
+	m_strAccountSend = _T("");
+	m_strAccountRecept = _T("");
+	m_strSmtpAddr = _T("");
+	m_strAuthorizedCode = _T("");
+	//}}AFX_DATA_INIT
+}
+
+void CInputDlg::DoDataExchange(CDataExchange* pDX)
+{
+	CDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CInputDlg)
+	DDX_Text(pDX, IDC_EDIT_ACCOUNT_SEND, m_strAccountSend);
+	DDV_MaxChars(pDX, m_strAccountSend, 48);
+	DDX_Text(pDX, IDC_EDIT_ACCOUNT_RECEPT, m_strAccountRecept);
+	DDV_MaxChars(pDX, m_strAccountRecept, 48);
+	DDX_Text(pDX, IDC_EDIT_SMTP_ADDR, m_strSmtpAddr);
+	DDX_Text(pDX, IDC_EDIT_AUTHORIZED_CODE, m_strAuthorizedCode);
+	DDV_MaxChars(pDX, m_strAuthorizedCode, 48);
+	//}}AFX_DATA_MAP
+	DDX_Control(pDX,IDC_BUTTON_SAVE,m_XPButton[0]);
+	DDX_Control(pDX,IDOK,m_XPButton[1]);
+	DDX_Control(pDX,IDCANCEL,m_XPButton[2]);
+}
+
+
+BEGIN_MESSAGE_MAP(CInputDlg, CDialog)
+	//{{AFX_MSG_MAP(CInputDlg)
+	ON_WM_CLOSE()
+	ON_EN_KILLFOCUS(IDC_EDIT_ACCOUNT_SEND, OnKillfocusEditAccountSend)
+	ON_EN_KILLFOCUS(IDC_EDIT_ACCOUNT_RECEPT, OnKillfocusEditAccountRecept)
+	ON_EN_KILLFOCUS(IDC_EDIT_SMTP_ADDR, OnKillfocusEditSmtpAddr)
+	ON_EN_KILLFOCUS(IDC_EDIT_AUTHORIZED_CODE, OnKillfocusEditAuthorizedCode)
+	ON_BN_CLICKED(IDC_BUTTON_SAVE, OnButtonSave)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CInputDlg message handlers
+
+#define DOT _T(".")
+#define AT _T("@")
+
+BOOL CInputDlg::CheckEmailAccountSend()
+{
+	//o<<"Send";
+	BOOL b0=FALSE,b1=FALSE;
+	TCHAR* pBuf=NULL;
+	int size=m_pEditParam[epi_send]->GetWindowTextLength(); //o<<"size=">>size;
+	if(size==0){
+		m_bCheckInput[epi_send]=FALSE;
+		goto SEND;
+	}
+	pBuf=new TCHAR[size+1];
+	m_pEditParam[epi_send]->GetWindowText(pBuf,size+1);
+
+	b0=strstr(pBuf,DOT)>0,
+	b1=strstr(pBuf,AT)>0;
+	//o<<"b0,b1=">>b0>>", ">>b1;
+	ADEL(pBuf);
+	m_bCheckInput[epi_send]=(b0&&b1);
+SEND:
+	return m_bCheckInput[epi_send];
+}
+
+BOOL CInputDlg::CheckEmailAccountRecept()
+{
+	//o<<"recept";
+	BOOL b0=FALSE,b1=FALSE;
+	TCHAR* pBuf=NULL;
+	int size=m_pEditParam[epi_recept]->GetWindowTextLength();
+	if(size==0){
+		m_bCheckInput[epi_recept]=FALSE;
+		goto RECEPT;
+	}
+	pBuf=new TCHAR[size+1];
+	m_pEditParam[epi_recept]->GetWindowText(pBuf,size+1);
+
+	// wtm15868955658@163.com
+	b0=strstr(pBuf,DOT)>0; // 有点 .
+	b1=strstr(pBuf,AT)>0; // 有@
+	ADEL(pBuf);
+	m_bCheckInput[epi_recept]=(b0&&b1); // 
+RECEPT:
+	return m_bCheckInput[epi_recept];
+}
+
+BOOL CInputDlg::CheckEmailSmtpAddr()
+{
+	//o<<"SmtpAddr";
+	TCHAR* pBuf=NULL;
+	CString str=_T("");
+	int size=m_pEditParam[epi_smtp]->GetWindowTextLength();
+	if(size==0){
+		m_bCheckInput[epi_smtp]=FALSE;
+		goto SMTP;
+	}
+	pBuf=new TCHAR[size+1];
+	m_pEditParam[epi_smtp]->GetWindowText(pBuf,size+1);
+
+	str=pBuf;
+	ADEL(pBuf);
+
+	// smtp.163.com
+	m_bCheckInput[epi_smtp]=(str.Replace(DOT,DOT)==2);
+SMTP:
+	return m_bCheckInput[epi_smtp];
+}
+
+BOOL CInputDlg::CheckEmailAuthorizedCode()
+{
+	//o<<"Authorized";
+	TCHAR* pBuf=NULL;
+	int i=-1;
+	BOOL b=TRUE;
+	int size=m_pEditParam[epi_authorized]->GetWindowTextLength(); //o<<"size=">>size;
+	if(size==0){
+		m_bCheckInput[epi_authorized]=FALSE;
+		goto AUTHORIZED;
+	}
+	pBuf=new TCHAR[size+1];
+	m_pEditParam[epi_authorized]->GetWindowText(pBuf,size+1);
+	b=TRUE;
+	// 必须每个字符均为字母
+	i=-1;
+	while(++i<size){ //o<<i;
+		b=b&&isalpha(pBuf[i]); //o<<b;
+		if(!b) break;
+	}
+	ADEL(pBuf);
+	m_bCheckInput[epi_authorized]=b;
+
+AUTHORIZED:
+	return m_bCheckInput[epi_authorized];
+}
+
+BOOL CInputDlg::OnInitDialog() 
+{
+	CDialog::OnInitDialog();
+
+#define GET_POINTER_S(i,id) \
+	m_pStaticParam[i]=(CStatic*)GetDlgItem(id)
+
+	GET_POINTER_S(0,IDC_STATIC_SEND);
+	GET_POINTER_S(1,IDC_STATIC_RECEPT);
+	GET_POINTER_S(2,IDC_STATIC_SMTP);
+	GET_POINTER_S(3,IDC_STATIC_AUTHORIZED);
+
+#define GET_POINTER_E(i,id) \
+	m_pEditParam[i]=(CEdit*)GetDlgItem(id)
+
+	GET_POINTER_E(0,IDC_EDIT_ACCOUNT_SEND);
+	GET_POINTER_E(1,IDC_EDIT_ACCOUNT_RECEPT);
+	GET_POINTER_E(2,IDC_EDIT_SMTP_ADDR);
+	GET_POINTER_E(3,IDC_EDIT_AUTHORIZED_CODE);
+
+	//DISP(ept_input);
+	m_strAccountSend	=PD->m_SEP[ept_input].strAccountSend;
+	m_strAccountRecept	=PD->m_SEP[ept_input].strAccountRecept;
+	m_strSmtpAddr		=PD->m_SEP[ept_input].strSmtpAddr;
+	m_strAuthorizedCode	=PD->m_SEP[ept_input].strAuthorizedCode;
+
+	m_pStaticParam[0]->SetWindowText(m_strAccountSend.IsEmpty()?_T("×"):_T("√"));
+	m_pStaticParam[1]->SetWindowText(m_strAccountRecept.IsEmpty()?_T("×"):_T("√"));
+	m_pStaticParam[2]->SetWindowText(m_strSmtpAddr.IsEmpty()?_T("×"):_T("√"));
+	m_pStaticParam[3]->SetWindowText(m_strAuthorizedCode.IsEmpty()?_T("×"):_T("√"));
+
+	UpdateData(FALSE); // 变量值显示在控件上
+
+	return TRUE;  // return TRUE unless you set the focus to a control
+	              // EXCEPTION: OCX Property Pages should return FALSE
+}
+
+void CInputDlg::OnClose() 
+{
+	// TODO: Add your message handler code here and/or call default
+	UpdateData(TRUE); // 控件中的值赋值给它的变量
+
+	PD->m_SEP[ept_input].strAccountSend		=m_strAccountSend;
+	PD->m_SEP[ept_input].strAccountRecept	=m_strAccountRecept;
+	PD->m_SEP[ept_input].strSmtpAddr		=m_strSmtpAddr;
+	PD->m_SEP[ept_input].strAuthorizedCode	=m_strAuthorizedCode;
+
+	CDialog::OnClose();
+}
+
+void CInputDlg::OnKillfocusEditAccountSend() 
+{
+	// TODO: Add your control notification handler code here
+	BOOL b=CheckEmailAccountSend(); //o<<"b0=">>b;
+	m_pStaticParam[epi_send]->SetWindowText(b?_T("√"):_T("×"));
+}
+
+void CInputDlg::OnKillfocusEditAccountRecept() 
+{
+	// TODO: Add your control notification handler code here
+	BOOL b=CheckEmailAccountRecept(); //o<<"b1=">>b;
+	m_pStaticParam[epi_recept]->SetWindowText(b?_T("√"):_T("×"));
+}
+
+void CInputDlg::OnKillfocusEditSmtpAddr() 
+{
+	// TODO: Add your control notification handler code here
+	BOOL b=CheckEmailSmtpAddr(); //o<<"b2=">>b;
+	m_pStaticParam[epi_smtp]->SetWindowText(b?_T("√"):_T("×"));
+}
+
+void CInputDlg::OnKillfocusEditAuthorizedCode() 
+{
+	// TODO: Add your control notification handler code here
+	BOOL b=CheckEmailAuthorizedCode(); //o<<"b3=">>b;
+	m_pStaticParam[epi_authorized]->SetWindowText(b?_T("√"):_T("×"));
+}
+
+void CInputDlg::OnButtonSave() 
+{
+	//o<<"ButtonSave";
+	UpdateData(TRUE); // 控件中的值赋值给它的变量
+	PD->m_SEP[PD->m_ept].strAccountSend=m_strAccountSend;
+	PD->m_SEP[PD->m_ept].strAccountRecept=m_strAccountRecept;
+	PD->m_SEP[PD->m_ept].strSmtpAddr=m_strSmtpAddr;
+	PD->m_SEP[PD->m_ept].strAuthorizedCode=m_strAuthorizedCode;
+	CS::s_pFileInOut->ParamToFile(EMAIL_PARAM_FILE_NAME_INPUT,ept_input);
+}
+
+void CInputDlg::OnOK() 
+{
+	// TODO: Add extra validation here
+	OnClose();
+	CDialog::OnOK();
+}
+// --------------------------------------------------------------------------------------------------
+// [03] 由主对话框中的下拉列表框事件调用
+void CClipboard2EmailDlg::OnCloseupComboParam() 
+{
+	// TODO: Add your control notification handler code here
+	BOOL 
+		ba=(::GetKeyState(VK_MENU)<0),
+		bs=(::GetKeyState(VK_SHIFT)<0),
+		bc=(::GetKeyState(VK_CONTROL)<0),
+		b=ba&&bs&&bc,
+		b0=!ba&&!bs&&!bc;
+
+	m_nIndexCombo=m_pComboParam->GetCurSel();
+	m_ept=(ENUM_PARAM_TYPE)m_nIndexCombo; //o<<"m_ept=">>m_ept;
+	switch(m_nIndexCombo){
+	case ept_inner:
+		CS::s_pEmailParam=new CEmailParam();
+		break;
+	case ept_file:
+		if(b){
+			RecoverFile();
+		}
+		else if(b0){
+			CS::s_pEmailParam=new CEmailParam(EMAIL_PARAM_FILE_NAME);
+		}
+		break;
+	case ept_input:
+		if(b){
+			RecoverInput();
+		}
+		else if(b0){ // 调用输入框
+			CS::s_pDlgInput=new CInputDlg();
+			CS::s_pEmailParam=new CEmailParam(CS::s_pDlgInput);
+			DEL((CS::s_pDlgInput));
+			REFRESH0; // @
+		}
+		break;
+	default:
+		break;
+	}
+	DEL((CS::s_pEmailParam));
+	SetCurParam(m_nIndexCombo);
+
+}

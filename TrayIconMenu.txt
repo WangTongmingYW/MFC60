@@ -1,0 +1,57 @@
+// 托盘图标与菜单
+// ----------------------------------------------------------------------------------------------------------
+// [01/08]
+NOTIFYICONDATA m_nid; // [tray]1.在对话框头文件 XXDlg.h 中添加成员变量
+// ----------------------------------------------------------------------------------------------------------
+// [02/08]
+	afx_msg LRESULT OnTrayNotify(WPARAM wParam, LPARAM lParam); // [tray] 2.添加tray消息响应函数的声明
+// ----------------------------------------------------------------------------------------------------------
+// [03/08]
+#define UM_TRAYNOTIFY WM_USER+11 // [tray] 3.在 XXDlg.cpp 定义 tray 消息
+// ----------------------------------------------------------------------------------------------------------
+// [04/08]
+	memset(&m_nid,0,sizeof(m_nid)); // [tray] 4.在CXXDlg 的构造函数中添加
+	// Initialize NOTIFYICONDATA struct
+	m_nid.cbSize=sizeof(m_nid);
+	m_nid.uFlags=NIF_ICON|NIF_TIP|NIF_MESSAGE;
+// ----------------------------------------------------------------------------------------------------------
+// [05/08]
+CClipboard2EmailDlg::~CClipboard2EmailDlg()
+{
+	m_nid.hIcon=NULL;
+	Shell_NotifyIcon(NIM_DELETE,&m_nid); // [tray] 5. 在 CXXDlg 的析构函数中添加
+}
+// ----------------------------------------------------------------------------------------------------------
+// [06/08]
+	ON_MESSAGE(UM_TRAYNOTIFY,OnTrayNotify) // [tray] 6.添加消息映射
+// ----------------------------------------------------------------------------------------------------------
+// [07/08]
+	//------------------------------------------------------------------
+	m_nid.hWnd=GetSafeHwnd(); // [tray] 7.在 OnInitDialog 函数添加
+	m_nid.uCallbackMessage=UM_TRAYNOTIFY;
+	m_nid.hIcon=m_hIcon;
+	CString strToolTip=_T("粘贴板信使");
+	_tcsncpy(m_nid.szTip,strToolTip,strToolTip.GetLength());
+	Shell_NotifyIcon(NIM_ADD, &m_nid);
+	//------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------------------
+// [08/08]
+LRESULT CClipboard2EmailDlg::OnTrayNotify(WPARAM wParam,LPARAM lParam) // [tray] 8.消息处理函数
+{
+	//CMenu menuTray;
+	if(!m_pMenuChief){ // 系统菜单
+		m_pMenuChief=this->GetSystemMenu(FALSE);
+	}
+	CPoint point;
+	int id;
+	UINT uMsg=(UINT)lParam;
+	switch(uMsg){
+	case WM_RBUTTONUP: 
+		GetCursorPos(&point);
+		//menuTray.LoadMenu(IDR_MENU_DEVELOP);
+		//id=menuTray.GetSubMenu(0)->TrackPopupMenu(TPM_RETURNCMD|TPM_LEFTALIGN|TPM_RIGHTBUTTON,point.x,point.y,this);
+		id=m_pMenuChief->TrackPopupMenu(TPM_RETURNCMD|TPM_LEFTALIGN|TPM_RIGHTBUTTON,point.x,point.y,this);
+		break;
+	}
+	return TRUE;
+}

@@ -1,0 +1,94 @@
+// --------------------------------------------------------------------------------------------------
+// [01] 把粘贴板中内容读到富编框，保证最后行可显示
+// GetFromClipboard.h
+class CGetFromClipboard  
+{
+public:
+	int GetLineCountVisible(); // 取得可显行数
+	CGetFromClipboard();
+	CGetFromClipboard(CRichEditCtrl* pRich);
+	virtual ~CGetFromClipboard();
+	CRichEditCtrl* m_pRich;
+};
+// --------------------------------------------------------------------------------------------------
+// [02] GetFromClipboard.cpp
+//#define PD CS::s_pDlg
+#define PDR PD->m_pRichClipboard
+//////////////////////////////////////////////////////////////////////
+// Construction/Destruction
+//////////////////////////////////////////////////////////////////////
+
+CGetFromClipboard::CGetFromClipboard()
+{
+	m_pRich=PDR;
+}
+
+CGetFromClipboard::CGetFromClipboard(CRichEditCtrl* pRich)
+{
+	m_pRich=pRich;
+	if(PD->m_bAddOver){ // 粘贴板内容追加到富编框末
+		m_pRich->SetSel(-1,-1);
+	}
+	else{
+		m_pRich->SetSel(0,-1); // 粘贴板内容覆盖先前的
+	}
+	m_pRich->Paste(); // 粘贴板到富编框
+	m_pRich->GetWindowText(CS::s_strClipboard); // 富编框到字符串变量
+
+	CString str;
+	// 显示行数
+	int nCountLine=pRich->GetLineCount(); // 总行数
+	str.Format(_T("|行数 %05d|"),nCountLine);
+	PD->m_pStaticCountLine->SetWindowText(str.GetBuffer(0));
+
+	// 滚动使可见最后一行
+	int nCountLineVisisble=GetLineCountVisible();
+	int nIndexFirst=m_pRich->GetFirstVisibleLine(); // 首行可见的行号
+	int nDiff=nCountLine-nCountLineVisisble-nIndexFirst;
+	m_pRich->LineScroll(nDiff);
+
+	// 显示光标所在行号
+	int nIndexCursor=m_pRich->LineFromChar(m_pRich->LineIndex());
+	str.Format(_T("|行序 %05d"),nIndexCursor+1);
+	PD->m_pStaticIndexLine->SetWindowText(str.GetBuffer(0));
+
+	/*/ 
+	if(PD->m_bClear){
+		CString str;
+		m_pRich->GetWindowText(str);
+		int nCount=str.Replace(_T("\r\n\r\n"),_T("\r\n")); //o<<"nCount=">>nCount; o<<str;
+		m_pRich->SetWindowText(_T(""));
+		m_pRich->SetWindowText(_G(str));
+	}*/
+}
+
+CGetFromClipboard::~CGetFromClipboard()
+{
+
+}
+
+// 考虑DPI映射比例，LOGFONT::lfHeight单位是像素; 
+// CHARFORMAT2::yHeight单位是1/1440英寸或1/567厘米
+//（现实长度必须根据DC的映射模式换算到实际DC中的像素值。
+
+//HDC hDC = PD->GetDC();
+//lfHeight = yHeight * (GetDeviceCaps(hDC, LOGPIXELSY)/1440)。
+//yHeight  = abs(lfHeight ) *(1440/GetDeviceCaps(hDC, LOGPIXELSY));
+
+#define GAP_BETWEEN_LINE 2
+int CGetFromClipboard::GetLineCountVisible()
+{
+	int nCountLine=0;
+	CRect rr;
+	m_pRich->GetWindowRect(&rr); // 矩形;
+	int nHeightRich=rr.Height(); // 框高
+	int nHeightBorder=::GetSystemMetrics(SM_CYBORDER); // 水平边高
+	int nHeightRichInner=nHeightRich-2*nHeightBorder; // 显示区高
+	CHARFORMAT cf;
+	m_pRich->GetDefaultCharFormat(cf);
+	HDC hDC=::GetDC(PD->GetSafeHwnd());
+	float fRatio=1440.0/GetDeviceCaps(hDC,LOGPIXELSY); // 缇/像素之比;
+	int nHeightFont=cf.yHeight/fRatio; // 字像素高
+	nCountLine=nHeightRichInner/(nHeightFont+GAP_BETWEEN_LINE); // 可显行数
+	return nCountLine;
+}

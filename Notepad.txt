@@ -1,0 +1,584 @@
+// --------------------------------------------------------------------------------------------------
+// [01] 概述：使用方法
+
+//////////////////////////////////////////////////////////////////////
+// Oo.h: interface for the COo class 使用说明:
+// 
+// 1.将下面3行包含在 CxxxApp.h 文件之首外
+/*
+#include "Oo.h"
+#define o *(CXXXApp::po) 
+#define _o o<<(COo::GetFileName(__FILE__))>>"@">>(int)__LINE__
+*/
+//
+//   在 CxxxApp类中声明一个静态变量
+/*
+    static COo* po; // CxxxApp.h
+    COo *CxxxApp::po=NULL; // CxxxApp.cpp 文件首外
+*/
+
+/*
+BOOL CWTMApp::InitInstance()
+{
+	AfxEnableControlContainer();
+	po=new COo(); // 劫持记事本窗口供信息输出
+*/
+// 
+// 2.将oo.cpp 第二行的包含句
+//   #include "oo.h" --> #include "xxx.h"   其中 xxx 为工程名
+//
+// 3.注意: 
+//   字符串数组末元素必须空串, 整型数组末元素必须为0, 作为结束标记
+// 
+// 4.定义形式:
+//   const COo& operator<<(CString s) const;
+//   要求里面涉及的变量必须是静态的
+// 5.若要随主程序一起关闭记事本
+//   把 if(s_hnotepad) ::SendMessage(s_hnotepad,WM_DESTROY,NULL,NULL);
+//   插入到 CxxxDlg::OnClose(),OnDestroy(),OnOK() 中
+//   否则要单独关闭
+// 
+// 6.继承关系
+//		     ┌─CMyRect [决定记事本矩形]
+//           ↓
+//		 ┌─CMyNotepad [取得记事本句柄进行写操作]
+//       ↓
+//	 ┌─CMyOutInfo [输出信息到记事本末]
+//	 ├─CMyFile [查找,创建与记事本关联的文本文件]
+//   ↓
+//   COo [利用运算符重载, 多态等对各种变量数组进行显示]
+// --------------------------------------------------------------------------------------------------
+// [02] Oo.h 在这个头文件里有很多父类声明，它们都位于同一个 Oo.h 文件，但在类视图中则分别显示
+#include <afxtempl.h> // 数组类必须
+
+// 文件名、标题栏名、类名宏定义
+#define NOTEPAD_FILENAME _T("oo.txt")
+#define NOTEPAD_TITLENAME_EXT _T("oo.txt - 记事本")
+#define NOTEPAD_TITLENAME _T("oo - 记事本")
+#define NOTEPAD_CLASSNAME _T("Notepad")
+#define EDIT_CLASS_NAME _T("Edit")
+
+// 基本类取新名
+typedef TCHAR* LPTCHAR; // 经过这样重命名, 系统就认为不同了
+typedef LPTCHAR* LPPTCHAR;
+typedef int* PINT;
+typedef float* PFLOAT;
+typedef double* PDOUBLE;
+typedef DWORD* PDWORD;
+typedef COLORREF* PCOLORREF;
+
+// CArrInt, CArrStr,CDisplayText 主要是为了初始化获得参数
+class CArrInt
+{
+public:
+	CArrInt(){};
+	PINT pi;
+	int count;
+	CArrInt(PINT pi0,int count0) // 整形数组与元素数量
+	{
+		pi=pi0;
+		count=count0;
+	};
+};
+class CArrStr
+{
+public:
+	CArrStr(){}
+	LPPTCHAR ppc;
+	int count;
+	CArrStr(LPPTCHAR ppc0,int count0) // 字符型数组与元素数量
+	{
+		ppc=ppc0;
+		count=count0;
+	}
+};
+class CDisplayText // 显示一个文本文件
+{
+public:
+	CDisplayText(){}
+	TCHAR *pd,*pdir,*pfile;
+	CDisplayText(TCHAR *pd0,TCHAR *pdir0,TCHAR *pfile0)
+	{
+		pd=pd0; pdir=pdir0; pfile=pfile0;
+	}
+};
+//-----------------------------------------------------------
+class CMyTextFile
+{
+public:
+	CMyTextFile(){}
+	~CMyTextFile(){}
+	static BOOL s_tf;
+	BOOL& MyFindFile() const; // 查找文本文件
+	BOOL& MyCreateFile() const; // 建立文本文件
+	BOOL& MyOpenFile() const; // 打开文本文件
+};
+
+//-----------------------------------------------------------
+class CMyRect // 取得记事本矩形
+{
+public:
+	CMyRect(){}
+	~CMyRect(){}
+	static BOOL s_tf;
+	static CRect m_rect;
+	BOOL& MyGetRect() const;
+
+};
+
+//-----------------------------------------------------------
+class CMyNotepad : 
+	public CMyRect // 确定动持的记事本窗口矩形, 右靠, 差不多顶天立地
+{
+public:
+	CMyNotepad(){}
+	~CMyNotepad(){}
+
+	static HWND 
+		s_hWnd, // 轮询句柄
+		s_hnotepad, // 记事本句柄
+		s_hedit; // 记事本编辑框句柄
+	static int s_offset;
+	static CString s_str;
+	static BOOL s_tf;
+
+	BOOL& MyGetNotepad() const; // 取得记事本句柄
+	BOOL& MyGetEdit() const; // 取得编辑框句柄
+	BOOL& MyClear() const; // 清空编辑框内容
+	BOOL& MyAppend(BOOL tf) const; // 追加内容
+	BOOL& MySetTop() const; // 记事本置顶
+};
+
+//-----------------------------------------------------------
+class CMyOutInfo :
+	public CMyNotepad // 处理记事本
+{
+public:
+	CMyOutInfo(){}
+	~CMyOutInfo(){};
+	static BOOL s_tf;
+	BOOL& MyOutInfo(BOOL tf) const; // 内容输出到记事本末
+};
+
+//-----------------------------------------------------------
+class COo :
+	public CMyTextFile, // 处理记事本所对应的文本文件(查找/新建)
+	public CMyOutInfo // 信息追加到记事本末
+{
+public:
+	COo();
+	virtual ~COo();
+	static CString readme;
+
+	BOOL CreateOpenFile();
+	BOOL GetNotepadEditHwnd();
+	static CString GetFileName(TCHAR *p);
+
+// 一般用const修饰返回值为对象本身的情况多用于二目操作符重载函数并产生新对象的时候
+//      ┌ 1.const 修饰函数返回值                   ┌
+//  ┌─┼ 2.& 用于链式赋值                     ┌─┼
+//  ↓  └ 3.operator<< 运算符重载          ↓  └
+	const COo& operator<<(CString s)		const; // 字符串类
+	const COo& operator<<(TCHAR c)			const; // 单个字符
+	const COo& operator<<(LPTCHAR p)		const; // 字符串
+	const COo& operator<<(LPPTCHAR pp)		const; // 字符串数组
+	const COo& operator<<(float f)			const; // 单精度
+	const COo& operator<<(double d)			const; // 双精度
+	const COo& operator<<(int i)			const; // 整型
+	const COo& operator<<(UINT ui)			const; // 无符号整型
+	const COo& operator<<(LONG ul)			const; // 无符号长整型
+	const COo& operator<<(PINT pi)			const; // 整型指针
+	const COo& operator<<(PFLOAT pf)		const; // 单精度指针
+	const COo& operator<<(PDOUBLE pd)		const; // 双精度指针
+	const COo& operator<<(DWORD dw)			const; // 双字,显示16进制
+	const COo& operator<<(PDWORD pdw)		const; // 双字,显示2进制
+	const COo& operator<<(CHARRANGE cr)		const; // 字符串范围结构体
+	const COo& operator<<(CHARFORMAT cf)	const; // 字体结构体
+	const COo& operator<<(CRect rc)			const; // 矩形类
+	const COo& operator<<(CSize sz)			const; // 大小类
+	const COo& operator<<(CPoint pt)		const; // 点类
+
+	const COo& operator>>(CString s)		const;
+	const COo& operator>>(TCHAR c)			const;
+	const COo& operator>>(LPTCHAR p)		const;
+	const COo& operator>>(float f)			const;
+	const COo& operator>>(double d)			const;
+	const COo& operator>>(int i)			const;
+	const COo& operator>>(DWORD dw)			const;
+	const COo& operator>>(CHARRANGE cr)		const;
+	const COo& operator>>(CRect rc)			const;
+	const COo& operator>>(CSize sz)			const;
+	const COo& operator>>(CPoint pt)		const;
+	// 对于自定义类型, 最好是常量引用
+	// 常量防止意外修改, 参数安全
+	// 引用--则不再有构造与析构过程, 加快速度
+	// 而系统变量本来就没有这个过程
+	const COo& operator<<(const CDisplayText& dt)	const; // 显示文本文件
+	const COo& operator<<(const CArrInt& arr)		const; // 整型数组自定义类
+	const COo& operator<<(const CArrStr& arr)		const; // 字符串数组自定义类
+};
+// --------------------------------------------------------------------------------------------------
+// [03]
+
+BOOL CMyTextFile::s_tf=FALSE;
+BOOL& CMyTextFile::MyFindFile() const
+{
+	CFileFind ff;
+	s_tf=ff.FindFile(NOTEPAD_FILENAME);
+	return (s_tf);
+}
+BOOL& CMyTextFile::MyCreateFile() const
+{
+	s_tf=FALSE;
+	CFile *fp=NULL;
+	TRY{
+		fp=new CFile(NOTEPAD_FILENAME,CFile::modeCreate|CFile::modeReadWrite);
+	}CATCH(CFileException,e){
+		return s_tf;
+	}END_CATCH;
+
+	TRY{
+		fp->Write(_T(""),0);
+	}CATCH(CFileException,e){
+		return s_tf;
+	}END_CATCH;
+
+	TRY{
+		fp->Close();
+	}CATCH(CFileException,e){
+		return s_tf;
+	}END_CATCH;	
+	delete fp;
+	fp=NULL;
+	return (s_tf=TRUE);
+}
+BOOL& CMyTextFile::MyOpenFile() const
+{
+	::ShellExecute(NULL,_T("open"),NOTEPAD_FILENAME,NULL,NULL,SW_SHOWNORMAL);
+	Sleep(100); // 暂停很要紧, 否则该窗口句柄后续程序抓不到!!!
+	return (s_tf=TRUE);
+}
+
+//-----------------------------------------------------------
+BOOL CMyRect::s_tf=FALSE;
+CRect CMyRect::m_rect(0,0,0,0);
+BOOL& CMyRect::MyGetRect() const
+{
+	//          竖边宽      横边高      窗口宽    窗口高    标题栏高     屏宽        屏高
+	//			0			1			2		  3			4			 5			 6
+	int para[]={SM_CXBORDER,SM_CYBORDER,SM_CXSIZE,SM_CYSIZE,SM_CYCAPTION,SM_CXSCREEN,SM_CYSCREEN};
+	int geo[7];
+	for(int i=0;i<7;i++)
+		geo[i]=GetSystemMetrics(para[i]);
+	int width=263;
+	CRect r(geo[5]-geo[0]-width,geo[4],geo[5]-geo[0],geo[6]-geo[4]-48);
+	m_rect=r;
+	return (s_tf=TRUE);
+}
+
+//-----------------------------------------------------------
+HWND CMyNotepad::s_hnotepad=NULL;
+HWND CMyNotepad::s_hedit=NULL;
+HWND CMyNotepad::s_hWnd=NULL;
+CString CMyNotepad::s_str="";
+int CMyNotepad::s_offset=0;
+BOOL CMyNotepad::s_tf=FALSE;
+BOOL& CMyNotepad::MyGetNotepad() const
+{
+	// 查找记事本
+START0:
+	s_hnotepad=::FindWindow(NOTEPAD_CLASSNAME,NOTEPAD_TITLENAME_EXT);
+	if(!s_hnotepad){ // 指定文件的记事本未打开
+		s_hnotepad=::FindWindow(NOTEPAD_CLASSNAME,NOTEPAD_TITLENAME);
+		if(!s_hnotepad){ // 指定文件的记事本未打开
+			//return (s_tf=FALSE);
+			goto START0;
+		}
+	}
+	return (s_tf=TRUE);
+}
+BOOL& CMyNotepad::MyGetEdit() const
+{
+	// 查找编辑框句柄
+	TCHAR szClass[MAX_PATH]={0};
+	s_hedit=::GetWindow(s_hnotepad,GW_CHILD); // 桌面下二级
+	while(s_hedit){ // 通过类名查找
+		::GetClassName(s_hedit,szClass,MAX_PATH);
+		if(szClass && // 类名不空
+			strstr(szClass,EDIT_CLASS_NAME)==szClass){ // 有匹配串
+			break; // 这肯定有
+		}
+		s_hedit=::GetWindow(s_hedit,GW_HWNDNEXT); // 同级下一个
+	}
+	return (s_tf=TRUE);
+}
+BOOL& CMyNotepad::MyClear() const	// 记事本清空
+{
+	s_offset=::SendMessage(s_hedit,WM_GETTEXTLENGTH,(WPARAM)0,(LPARAM)0);
+	::SendMessage(s_hedit,EM_SETSEL,(WPARAM)0,(LPARAM)s_offset);
+	::SendMessage(s_hedit,EM_REPLACESEL,(WPARAM)FALSE,(LPARAM)(""));
+	::SendMessage(s_hedit,EM_SETSEL,(WPARAM)0,(LPARAM)0);
+	return (s_tf=TRUE);
+}
+BOOL& CMyNotepad::MyAppend(BOOL tf) const
+{
+	if(tf) s_str.Insert(0,_T("\r\n"));
+	s_offset=::SendMessage(s_hedit,WM_GETTEXTLENGTH,(WPARAM)0,(LPARAM)0);			// 取得编辑框内文本长度
+	::SendMessage(s_hedit,EM_SETSEL,(WPARAM)(s_offset),(LPARAM)(s_offset));			// 光标置于文末
+	::SendMessage(s_hedit,EM_REPLACESEL,(WPARAM)FALSE,(LPARAM)(s_str.GetBuffer(0)));// 新内容插于文末
+	s_offset=::SendMessage(s_hedit,WM_GETTEXTLENGTH,(WPARAM)0,(LPARAM)0);			// 刷新编辑框文本长度
+	::SendMessage(s_hedit,EM_SETSEL,(WPARAM)(s_offset),(LPARAM)(s_offset));			// 光标置于文末
+	return (s_tf=TRUE);
+}
+BOOL& CMyNotepad::MySetTop() const
+{
+	// 记事本置顶
+	if(!s_hnotepad) return (s_tf=FALSE);
+	MyGetRect(); // CMyRect::MyGetRect()
+	::SetWindowPos(s_hnotepad,HWND_TOPMOST,m_rect.left,m_rect.top,m_rect.Width(),m_rect.Height(),SWP_NOACTIVATE);
+	::SendMessage(s_hnotepad,SW_RESTORE,NULL,NULL);
+	return (s_tf=TRUE);
+}
+
+//-----------------------------------------------------------
+BOOL CMyOutInfo::s_tf=FALSE;
+BOOL& CMyOutInfo::MyOutInfo(BOOL tf) const
+{
+	if(!MyAppend(tf)) return (s_tf=FALSE); // CMyNotepad::MyAppend()
+	return (s_tf=TRUE);
+}
+
+//-----------------------------------------------------------
+
+//////////////////////////////////////////////////////////////////////
+// Construction/Destruction
+//////////////////////////////////////////////////////////////////////
+CString COo::readme="";
+COo::COo()
+{
+	/*
+	1.查找文件是否已是打开
+	2.查找不到返回
+	3.查找到置顶
+	4.取得编辑框的句柄
+	5.实施清空
+	*/
+	if(!CreateOpenFile()) return;
+
+	if(!GetNotepadEditHwnd()){
+		if(!CreateOpenFile()) return;
+	}
+	readme=_T("  能显示的类型:\r\n\
+    1.显示基本数据类型, 如: int,char,float,double;\r\n\
+    2.显示扩展数据类型, 如: DWORD(16进制),PDWORD(2进制);\r\n\
+    3.显示基本类对象, 如: CPoint,CSize,CRect;\r\n\
+    4.显示数据结构, 如: CHARRANGE,CHARFORMAT;\r\n\
+    5.显示有结束标志的数组, 如: LPPTCHAR,PINT,PFLOAT,PDOUBLE;\r\n\
+    6.显示无结束标志的数组, 如: CArrInt,CArrStr;\r\n\
+    7.显示文本文件内容, 如: CDisplayText;\r\n");
+	s_str=readme;
+}
+
+COo::~COo()
+{
+	if(s_hnotepad) ::SendMessage(s_hnotepad,WM_DESTROY,NULL,NULL);
+}
+
+BOOL COo::CreateOpenFile()
+{
+	if(!MyFindFile()){ // 当前目录找不到文件 CMyFile::MyFindFile()
+		if(!MyCreateFile()){ return FALSE; } // 创建文件 CMyFile::CreateFile()
+	}
+	if(!MyOpenFile()){ return FALSE; } // 打开文件 CMyFile::OpenFile()
+	if(!GetNotepadEditHwnd()){ return FALSE; } // 取得句柄 
+	return TRUE;
+}
+CString COo::GetFileName(TCHAR *p)
+{
+	CString s=p;
+	int offset=s.ReverseFind('\\');
+	s_str=s.Mid(offset+1);
+	return s_str;
+}
+BOOL COo::GetNotepadEditHwnd()
+{
+	if(!MyGetNotepad())		return FALSE; // 查找记事本 CMyNotepad::MyGetNotepad()
+	if(!MySetTop())			return FALSE; // 窗口置顶 CMyNotepad::MySetTop()
+	if(!MyGetEdit())		return FALSE; // 取得编辑框句柄 CMyNotepad::MyGetEdit()
+	if(!MyClear())			return FALSE; // 清空编辑框内容 CMyNotepad::MyClear()
+	return TRUE;
+}
+
+// 注: 字符串类变量直接输出, 其他类变量用 CString::Format() 格式化成字符串类再输出
+// 输出后再返回类实例
+#define _G(s) s.GetBuffer(0)
+const COo& COo::operator<<(const CDisplayText& dt) const
+{
+	s_str="";
+	CString s;
+	if((dt.pd[0])&&(dt.pdir[0])&&(dt.pfile[0]))	s.Format(_T("%s:\\%s\\%s"),dt.pd,dt.pdir,dt.pfile);
+	else if(!(dt.pd[0])&&(dt.pdir[0])&&(dt.pfile[0])) s.Format(_T("%s\\%s"),dt.pdir,dt.pfile);
+	else if((dt.pd[0])&&!(dt.pdir[0])&&(dt.pfile[0])) s.Format(_T("%s:\\%s"),dt.pd,dt.pfile);
+	else if(!(dt.pd[0])&&!(dt.pdir[0])&&(dt.pfile[0])) s.Format(_T("%s"),dt.pfile);
+	else { return *this<<s_str; }
+	CFileFind ff;
+	if(!ff.FindFile(_G(s))){
+		return *this<<s_str;
+	}
+
+	CFile* pf=NULL;
+	TRY{ // 打开
+		pf=new CFile(_G(s),CFile::modeRead);
+	}CATCH(CFileException,e){
+		return *this<<s_str;
+	}END_CATCH;
+	int size=pf->GetLength();
+	if(size==0){
+		return *this<<s_str;
+	}
+	TCHAR *pbuf=new TCHAR[size+1];
+	if(pbuf==NULL){
+		return *this<<s_str;
+	}
+	memset(pbuf,0,size+1);
+	TRY{ // 读出
+		pf->Read(pbuf,size+1);
+	}CATCH(CFileException,e){
+		return *this<<s_str;
+	}END_CATCH;
+	s_str=pbuf; delete []pbuf; pbuf=NULL;
+	TRY{ // 关闭
+		pf->Close();
+	}CATCH(CFileException,e){
+		return *this<<s_str;
+	}END_CATCH;
+	return *this<<s_str;
+}
+const COo& COo::operator<<(const CArrInt& arr) const			// 整型数组自定义类
+{
+	int i=-1;
+	s_str=_T("\r\n整型数组:\r\n");
+	CString s;
+	while(++i<arr.count){
+		s.Format(_T("  [%d]:%d\r\n"),i,arr.pi[i]);
+		s_str+=s;
+	}
+	return *this<<s_str;
+}
+const COo& COo::operator<<(const CArrStr& arr) const			// 字符串数组自定义类
+{
+	int i=-1;
+	s_str=_T("\r\n字符串数组:\r\n");
+	CString s;
+	while(++i<arr.count){ // 最后一个必须是空串作为结束标记
+		s.Format(_T("  [%d]:\"%s\"\r\n"),i,arr.ppc[i]);
+		s_str+=s;
+	}
+	return *this<<s_str;
+}
+const COo& COo::operator<<(CString s)	const { s_str=s; MyOutInfo(1);				return *this;		 }
+const COo& COo::operator<<(TCHAR c)		const { s_str.Format(_T("\r\n\'%c\'"),(c));	return *this<<s_str; }
+const COo& COo::operator<<(LPTCHAR p)	const { s_str.Format(_T("%s"),(p));			return *this<<s_str; }
+const COo& COo::operator<<(float f)		const { s_str.Format(_T("\r\n%f"),(f));		return *this<<s_str; }
+const COo& COo::operator<<(double d)	const { s_str.Format(_T("\r\n%lf"),(d));	return *this<<s_str; }
+const COo& COo::operator<<(int i)		const { s_str.Format(_T("\r\n%d"),(i));		return *this<<s_str; }
+const COo& COo::operator<<(UINT ui)		const { s_str.Format(_T("\r\n%u"),(ui));	return *this<<s_str; }
+const COo& COo::operator<<(LONG ul)		const { s_str.Format(_T("\r\n%ul"),(ul));	return *this<<s_str; }
+const COo& COo::operator<<(PINT pi)		const
+{
+	int j=-1;
+	int i=-1;
+	s_str=_T("\r\n整型数组:\r\n");
+	CString s;
+	while((pi)[++i]){ // 最后一个必须是0值作为结束标记
+		s.Format(_T("  [%d]:%d\r\n"),i,(pi)[i]);
+		s_str+=s;
+		if(++j==16) break;
+	}
+	return *this<<s_str;
+}
+const COo& COo::operator<<(PFLOAT pf) const
+{
+	int i=-1;
+	s_str=_T("\r\n单精度数组:\r\n");
+	CString s;
+	while((pf)[++i]){ // 最后一个必须是0值作为结束标记
+		s.Format(_T("  [%d]:%f\r\n"),i,(pf)[i]);
+		s_str+=s;
+	}
+	return *this<<s_str;
+}
+const COo& COo::operator<<(PDOUBLE pd) const
+{
+	int j=-1;
+	int i=-1;
+	s_str=_T("\r\n双精度数组:\r\n");
+	CString s;
+	while((pd)[++i]){ // 最后一个必须是0值作为结束标记
+		s.Format(_T("  [%d]:%lf\r\n"),i,(pd)[i]);
+		s_str+=s;
+		if(++j==16) break;
+	}
+	return *this<<s_str;
+}
+const COo& COo::operator<<(DWORD dw) const		{ s_str.Format(_T("\r\n0x%08x"),(dw));				return *this<<s_str; }
+const COo& COo::operator<<(PDWORD pdw) const
+{ 
+	// 8位一组, 组间空一格,共3格,末串结束符1格,共36格
+	char cbit[36]={0}; memset(cbit,32,35); cbit[35]=0;
+	DWORD dw=*(pdw);
+	int i=0,index,
+		nLeftShift=32,
+		nRightShift=32-1;
+	do{
+		index=--nLeftShift;
+		i=index/8;
+		cbit[index+i]=_T('0')+(char)((dw<<nLeftShift)>>nRightShift);
+	}while(nLeftShift);
+	s_str=cbit;
+	return *this<<s_str;
+}
+const COo& COo::operator<<(CHARRANGE cr) const	{ s_str.Format(_T("\r\ncr:[%d,%d]"),(cr).cpMin,(cr).cpMax);
+																									return *this<<s_str; }
+const COo& COo::operator<<(CHARFORMAT cf) const	
+{
+	s_str.Format(_T("CHARFORMAT:\r\n\
+    dwMask: %s\r\n\
+    dwEffects: %s\r\n\
+    yHeight: %l\r\n\
+	yOffset: %l\r\n\
+	crTextColor:%x\r\n\
+	szFaceName: %s"),(cf).dwMask,(cf).dwEffects,(cf).yHeight,(cf).yOffset,(cf).crTextColor,(cf).szFaceName);
+	return *this<<s_str;
+}
+
+const COo& COo::operator<<(CRect rc)	const { s_str.Format(_T("\r\nrc:[%d,%d,%d,%d]"),(rc).left,(rc).top,(rc).right,(rc).bottom);
+																									return *this<<s_str; }
+const COo& COo::operator<<(CSize sz)	const { s_str.Format(_T("\r\nsz:[%d,%d]"),(sz).cx,(sz).cy);	return *this<<s_str; }
+const COo& COo::operator<<(CPoint pt)	const { s_str.Format(_T("\r\npt:[%d,%d]"),(pt).x,(pt).y);	return *this<<s_str; }
+
+const COo& COo::operator>>(CString s)	const { s_str=s; MyOutInfo(0);								return *this;		 }
+const COo& COo::operator>>(TCHAR c)		const { s_str.Format(_T("\'%c\'"),(c));						return *this>>s_str; }
+const COo& COo::operator>>(LPTCHAR p)	const { s_str=(p);											return *this>>s_str; }
+const COo& COo::operator<<(LPPTCHAR pp)	const
+{
+	int j=-1;
+	int i=-1;
+	s_str=_T("\r\n字符串数组:\r\n");
+	CString s;
+	while((pp)[++i][0]){ // 最后一个必须是空串作为结束标记
+		s.Format(_T("  [%d]:\"%s\"\r\n"),i,(pp)[i]);
+		s_str+=s;
+		if(++j==16) break;
+	}
+	return *this>>s_str;
+}
+const COo& COo::operator>>(float f)		const { s_str.Format(_T("%f"),(f));							return *this<<s_str; }
+const COo& COo::operator>>(double d)	const { s_str.Format(_T("%lf"),(d));						return *this<<s_str; }
+const COo& COo::operator>>(int i)		const { s_str.Format(_T("%d"),(i));							return *this>>s_str; }
+const COo& COo::operator>>(DWORD dw)	const { s_str.Format(_T("0x%08x"),(dw));					return *this<<s_str; }
+const COo& COo::operator>>(CHARRANGE cr)const { s_str.Format(_T("cr:[%d,%d]"),(cr).cpMin,(cr).cpMax);	return *this<<s_str; }
+const COo& COo::operator>>(CRect rc)	const { s_str.Format(_T("rc:[%d,%d,%d,%d]"),(rc).left,(rc).top,(rc).right,(rc).bottom); 
+																									return *this<<s_str; }
+const COo& COo::operator>>(CSize sz)	const { s_str.Format(_T("sz:[%d,%d]"),(sz).cx,(sz).cy);		return *this<<s_str; }
+const COo& COo::operator>>(CPoint pt)	const { s_str.Format(_T("pt:[%d,%d]"),(pt).x,(pt).y);		return *this<<s_str; }

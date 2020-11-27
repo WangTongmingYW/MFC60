@@ -1,0 +1,271 @@
+// 呼吸荷图编程
+// ----------------------------------------------------------------------------------------------------------
+// [01/08] 在 CXXDlg.h 中声明线程类变量
+	CWinThread
+		* m_pThreadSave, // 刻度数据存盘
+		* m_pThreadSound, // 朗读编辑框中的文本
+		* m_pThreadHelp, // 出现在标题栏上的帮助
+		* m_pThreadDynamicDisplay, // 用画线画成磁盘
+		* m_pThreadBreathe, // 右上角莲花图呼吸状显示
+		* m_pThreadRipple, // 左上角标题栏随机涟漪
+		* m_pThreadScroll; // 工具条卷轴展开
+// ----------------------------------------------------------------------------------------------------------
+// [02/08] 编辑供线程调用的全局函数
+// 线程函数是全局函数
+// 呼吸周期为 2*CYCLE_COUNT, 作为下标范围
+// 百分比数组为 PD->fade[]
+// PD->nfadenfade 是类的成员变量
+UINT ThreadFuncBreathe(LPVOID lpParam)
+{
+	if(!(PD->m_bOnce)){
+		CO::s_pMyBreathe->OutPutFrame();
+	}
+	return 0;
+}
+// ----------------------------------------------------------------------------------------------------------
+// [03/08] 在 CXXDlg.cpp OnTImer() 中调用
+extern UINT ThreadFuncBreathe(LPVOID lpParam);
+void CDiscretePlayDlg::OnTimer(UINT nIDEvent) 
+{
+	// TODO: Add your message handler code here and/or call default
+	//o<<_T("OnTimer");
+	//CO::s_pPictureDlg->Display();
+	//ThreadFuncRipple(NULL);
+	if((++m_nIndexTip)%=COUNT_PERIOD,(m_nIndexTip==0)){
+		;//CO::s_pMyHelp->Display();
+	}
+	if(m_nIndexTip%3==0){
+		if(CO::s_pMySetup->m_bSwitchLotus){
+			;//[~^]
+			m_pThreadBreathe=AfxBeginThread(ThreadFuncBreathe,&(PD->Info)); // @
+		}
+// ----------------------------------------------------------------------------------------------------------
+// [04/08] 自定义呼吸类
+// MyBreathe.h
+class CMyBreathe  
+{
+// Constructor
+public:
+	CMyBreathe();
+	virtual ~CMyBreathe();
+// Operation
+public:
+	void OutPutFrame();
+	int GetBreatheFade(){ return m_nBreatheFade; }
+	BOOL MakePercentSeries();
+	CSize GetBitmapSize();
+	BOOL RenderPixel(float percent);
+	BOOL PutBitmap(float percent);
+// Attributes
+private:
+	int m_nBreatheFade;
+	float m_fFade[COUNT_CYCLE*2]; // 存放调和百分比
+	CSize m_bmpSize;
+	CBitmap *m_pBitmap;
+	int m_Count;
+	DWORD* m_pDword[2];
+	CRect m_rLotus;
+};
+// ----------------------------------------------------------------------------------------------------------
+// [05/08] 呼吸类执行文件
+// MyBreathe.cpp
+// 线程函数是全局函数
+// 呼吸周期为 2*CYCLE_COUNT, 作为下标范围
+// 百分比数组为 PD->fade[]
+// PD->nfadenfade 是类的成员变量
+UINT ThreadFuncBreathe(LPVOID lpParam)
+{
+	if(!(PD->m_bOnce)){
+		CO::s_pMyBreathe->OutPutFrame();
+	}
+	return 0;
+}
+//m_pThreadBreathe=AfxBeginThread(ThreadFuncBreathe,&(PD->Info));
+//////////////////////////////////////////////////////////////////////
+// Construction/Destruction
+//////////////////////////////////////////////////////////////////////
+CMyBreathe::CMyBreathe() :
+	m_nBreatheFade(0),
+	m_bmpSize(0,0),
+	m_pBitmap(NULL),
+	m_Count(0),
+	m_rLotus(FN)
+{_o;
+	GetBitmapSize();
+	MakePercentSeries();
+	m_nBreatheFade=-1;
+}
+CMyBreathe::~CMyBreathe()
+{
+	ADEL(m_pDword[0]);
+	ADEL(m_pDword[1]);
+}
+BOOL CMyBreathe::PutBitmap(float percent)
+{	
+	//o<<"PutBitmap";
+	CDC* pDC=PD->GetWindowDC();
+	//CS::s_pBitmap=new CBitmap;
+
+	CBitmap* pOldBitmap;
+	CDC* pDisplayMemDC=new CDC;
+	pDisplayMemDC->CreateCompatibleDC(pDC);
+
+	// 渲染
+	RenderPixel(percent); //o<<"percent=">>percent;
+	// 回放
+	m_pBitmap->SetBitmapBits(m_Count*sizeof(DWORD),m_pDword[1]);
+	CRect cr=CS::s_rLotus; //o<<cr;
+	// 选入
+	pOldBitmap=(CBitmap*)pDisplayMemDC->SelectObject(m_pBitmap);
+	pDC->BitBlt(cr.left,cr.top,cr.Width(),cr.Height(),pDisplayMemDC,0,0,SRCCOPY);
+
+	// 恢复默认选入
+	pDisplayMemDC->SelectObject(pOldBitmap);
+	//CS::s_pBitmap->DeleteObject();
+	//DEL(CS::s_pBitmap);
+	pDisplayMemDC->DeleteDC();
+	DEL(pDisplayMemDC);
+	PD->ReleaseDC(pDC);
+	return TRUE;
+}
+/*
+	//HBITMAP hBitmap=(HBITMAP)::LoadImage(
+	//	::AfxGetInstanceHandle(),
+	//	MAKEINTRESOURCE(IDB_BITMAP_LOTUS),
+	//	IMAGE_BITMAP,0,0,
+	//	LR_CREATEDIBSECTION);//从资源文件中加载;
+RGBQUAD结构的定义如下: 
+　　typedef struct tagRGBQUAD {
+　　   BYTErgbBlue;// 蓝色的亮度(值范围为0-255)
+　　   BYTErgbGreen; // 绿色的亮度(值范围为0-255)
+　　   BYTErgbRed; // 红色的亮度(值范围为0-255)
+　　   BYTErgbReserved;// 保留，必须为0
+　　} RGBQUAD;
+24位色的BMP文件中，每三个字节表示一个像素的颜色。
+注意，通常使用RGB来表示颜色，但BMP文件则采用BGR，就是说，顺序被反过来了。
+*/
+BOOL CMyBreathe::RenderPixel(float percent)
+{
+	//o<<"RenderPixel";
+	float m=percent,n=1-m;
+
+	// 游标指针指向两大块首
+	BYTE* pbyte0=(BYTE*)(m_pDword[0]),
+		* pbyte1=(BYTE*)(m_pDword[1]);
+	--pbyte0;
+	--pbyte1;
+#define NUM 4
+#define WIDTH_PIXEL 156 // lotus.bmp 宽度
+#define HEIGHT_PIXEL 24 // lotus.bmp 高度
+#define REST (WIDTH_PIXEL-24)
+	BYTE bt0[NUM]={229,207,188,0},bt1[NUM]={0,0,0},bt[NUM]={0,0,0,0};
+	int i=-1,u=m_Count;
+	while(++i<u){ 
+		// 从头读出每个字（像素）的颜色分量到
+		bt[0]=*++pbyte0;
+		bt[1]=*++pbyte0;
+		bt[2]=*++pbyte0;
+		bt[3]=*++pbyte0;
+
+		BOOL b0=(i%WIDTH_PIXEL>REST), // 整行数
+			 b1=(i/WIDTH_PIXEL>HEIGHT_PIXEL-4); // 
+		if(!b1){
+			if(b0){
+				*++pbyte1=bt[0];
+				*++pbyte1=bt[1];
+				*++pbyte1=bt[2];
+				*++pbyte1=bt[3];
+				continue; // 避免按钮被呼吸
+			}
+		}
+		// 若是背景色，则不进行渲染
+		if(	(bt[0]==bt0[0])&&
+			(bt[1]==bt0[1])&&
+			(bt[2]==bt0[2])&&
+			(bt[3]==bt0[3])
+			)
+		{	// m -- 来自非底色的分量，n -- 来自底色的分量
+			bt1[0]=bt[0];
+			bt1[1]=bt[1];
+			bt1[2]=bt[2];
+			bt1[3]=bt[3];
+		}
+		else{
+			bt1[0]=(BYTE)(((float)bt[0])*m)+(BYTE)(((float)bt0[0])*n); // blue
+			bt1[1]=(BYTE)(((float)bt[1])*m)+(BYTE)(((float)bt0[1])*n); // green
+			bt1[2]=(BYTE)(((float)bt[2])*m)+(BYTE)(((float)bt0[2])*n); // red
+			bt1[3]=(BYTE)(((float)bt[3])*m)+(BYTE)(((float)bt0[3])*n); // red
+		}
+		*++pbyte1=bt1[0];
+		*++pbyte1=bt1[1];
+		*++pbyte1=bt1[2];
+		*++pbyte1=bt1[3];
+	};
+	return TRUE;
+}
+CSize CMyBreathe::GetBitmapSize()
+{
+	//CBitmap *pBitmap=new CBitmap;
+	m_pBitmap=new CBitmap();
+	m_pBitmap->LoadBitmap(IDB_BITMAP_LOTUS); // 载入位图，此位图须 32位的，非压缩的
+	//CS::s_hBitmap=(HBITMAP)::LoadImage(
+		//	::AfxGetInstanceHandle(),
+		//	MAKEINTRESOURCE(IDB_BITMAP_LOTUS),
+		//	IMAGE_BITMAP,0,0,
+		//	LR_CREATEDIBSECTION);//从资源文件中加载
+
+	// 计算长宽，以分配字的数组长度
+	BITMAP bm;
+	GetObject(m_pBitmap->GetSafeHandle(),sizeof(BITMAP),&bm);
+	CSize sz(bm.bmWidth,bm.bmHeight);
+	m_bmpSize=sz;
+	m_Count=sz.cx*sz.cy; //o<<"m_Count=">>m_Count;
+	m_pDword[0]=new DWORD[m_Count];
+	m_pDword[1]=new DWORD[m_Count];
+	// 把原图载入数组0行，经由此维改造后存入1行
+	m_pBitmap->GetBitmapBits(m_Count*sizeof(DWORD),m_pDword[0]);
+	//CS::s_pBitmap->DeleteObject();
+	//DEL(CS::s_pBitmap);
+	return TRUE;
+}
+BOOL CMyBreathe::MakePercentSeries()
+{
+	//o<<"MakePercentSeries";
+	double per[CYCLE_COUNT]={
+		1.0,  1.0,	1.0,  1.0,	1.0,
+		1.0,  0.996,0.984,0.965,0.939,
+		0.903,0.866,0.819,0.766,0.707,
+		0.642,0.573,0.500,0.422,0.342,
+		0.258,0.173,0.087,0,	0,
+		0,	  0,	0,	  0,	0};
+	if(1){
+		int i=-1;
+		while(++i<CYCLE_COUNT){
+			m_fFade[2*CYCLE_COUNT-1-i]=m_fFade[i]=(float)per[i]; //o<<"m_fFade[">>i>>"]=">>m_fFade[i]>>", m_fFade[">>2*CYCLE_COUNT-1-i>>"]=">>m_fFade[2*CYCLE_COUNT-1-i];
+		}
+	}
+	return TRUE;
+}
+void CMyBreathe::OutPutFrame()
+{
+	++m_nBreatheFade; //o<<"CO::s_pMyBreathe->m_nBreatheFade=">>(CO::s_pMyBreathe->m_nBreatheFade);
+	int n=m_nBreatheFade%(2*CYCLE_COUNT); 
+	if(n==0){ m_nBreatheFade=0; }
+	float percent=m_fFade[n];
+	PutBitmap(percent);
+}
+// ----------------------------------------------------------------------------------------------------------
+// [06/08] 呼吸类对象声明与初始化
+//S.h
+static CMyBreathe* s_pMyBreathe;
+S.cpp
+CMyBreathe		* CS::s_pMyBreathe			=NULL;
+// ----------------------------------------------------------------------------------------------------------
+// [07/08] 在 CXXDlg.cpp OnInitDialog()
+	// 荷花隐显
+	if(bd) o<<_T("29荷花隐显");
+	CO::s_pMyBreathe=new CMyBreathe();
+	if(bDel) o<<_T("29荷花隐显");
+// ----------------------------------------------------------------------------------------------------------
+// [08/08] 在 CXXDlg.cpp OnClose()
+	DEL(CO::s_pMyBreathe);

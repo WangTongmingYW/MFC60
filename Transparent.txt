@@ -1,0 +1,27 @@
+// --------------------------------------------------------------------------------------------------
+// [01] 让主界面界面透明
+//      
+BOOL CClipboard2EmailDlgMate::Transparent()
+{
+	// 一般窗口不具备 透明 属性
+	LONG dwExStyle=GetWindowLong(PD->GetSafeHwnd(),GWL_EXSTYLE);
+	if((dwExStyle&0x80000)==0x80000){ return TRUE; }// 已具备透明属性
+
+	// 不具备透明属性的, 再开启这个透明属性
+	SetWindowLong(PD->GetSafeHwnd(),GWL_EXSTYLE,dwExStyle^0x80000);
+
+	// 处理透明属性的函数在动态链接库中
+	HINSTANCE hInst=LoadLibrary("User32.DLL"); // 载入动态链接库
+	if(!hInst){ return FALSE; } 
+
+	typedef BOOL (WINAPI *MYFUNC)(HWND,COLORREF,BYTE,DWORD); // 定义函数指针
+	MYFUNC fun=NULL;
+	//取得 SetLayeredWindowAttributes 函数指针 
+	fun=(MYFUNC)GetProcAddress(hInst,_T("SetLayeredWindowAttributes"));
+	// 完成函数调用
+	if(fun) fun(PD->GetSafeHwnd(),RGB(188,207,229),224,2); 
+	// ?BYTE bAlpha: ＝0：整个窗口透明, =255 完全不透明  
+	FreeLibrary(hInst); // 卸载动态链接库	return TRUE;
+
+	return TRUE;
+}

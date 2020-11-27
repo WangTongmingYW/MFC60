@@ -1,0 +1,65 @@
+// --------------------------------------------------------------------------------------------------
+// [01] 对话框美化四项内容：
+// 1.边框与标题栏美化 IDM_DIALOG_BEAUTIFUL_BORDER
+// 2.系统图标动感美化 IDM_DIALOG_BEAUTIFUL_ICON
+// 3.标题栏右侧动感美化 IDM_DIALOG_BEAUTIFUL_MOVE
+// 4.标题栏右侧涟漪美化 IDM_DIALOG_BEAUTIFUL_RIPPLE
+//
+// --------------------------------------------------------------------------------------------------
+// [02] 类与功能
+// 1.MFC 对话框基类 CDialog 由系统负责对话框界面的维护
+// 2.CDialog 的派生类 CMyDialog: 在 WM_NCPAINT 中启动绘制
+// 3.CMyBeautiful 类负责绘制，与 CDialog 并列被 CMyDialog 包含
+// 4.CClipboard2EmailDlg 由 CMyDialog 派生，只发送重绘非客户区消息
+//
+// --------------------------------------------------------------------------------------------------
+// [03] 类的继承关系：共有三层
+// 1.第一层：CDialog 和 CMyBeautiful 派生出 CMyDialog
+// 2.第二层：CMyDialog 和 CClipboard2EmailDlgMate 派生出 CClipboard2EmailDlg
+
+/////////////////////////////////////////////////////////////////////////////
+// CMyDialog dialog
+#include "MyBeautiful.h"
+class CMyDialog :
+  public CDialog // 对话框基类，由系统负责维护对话框界面等
+, public CMyBeautiful // 用于美化窗口非客户区
+{
+// Construction
+// ...
+// --------------------------------------------------------------------------------------------------
+// [04]
+#include "Clipboard2EmailDlgMate.h"
+#include "MyDialog.h"
+class CClipboard2EmailDlg 
+: public CMyDialog // 负责美化非客户区
+, public CClipboard2EmailDlgMate // 函数集
+{
+// Construction
+// ...
+// --------------------------------------------------------------------------------------------------
+// [05] 绘图宏：定义在 Clipboard2Email.dsm 文件里
+#define REFRESH0 \
+	if(1){\
+		CMyBeautiful mb;\
+		mb.bFrameIt();\
+	}
+// --------------------------------------------------------------------------------------------------
+// [06] 绘图事件
+// 注意：ON_WM_NCPAINT() 在子类 CClipboard2EmailDlg 中加入这个消息，这个才会得到执行
+void CMyDialog::OnNcPaint() 
+{
+	// TODO: Add your message handler code here
+	//o<<"bFrameIt()";
+	bFrameIt();//(CS::s_pCab);  // CMyBeautiful::bFrameIt(CString strCaption);
+	// 禁止系统重画非客户区
+	// Do not call CDialog::OnNcPaint() for painting messages 
+}
+// --------------------------------------------------------------------------------------------------
+// [07] 在 Clipboard2EmailDlg.cpp 把非客户区遭受破坏的消息加入到通知的队列中
+BEGIN_MESSAGE_MAP(CClipboard2EmailDlg, CDialog)
+	//{{AFX_MSG_MAP(CClipboard2EmailDlg)
+	...
+	ON_WM_NCPAINT() //!!!!! 这条太重要了，它在父类CMyDialog中处理这个消息
+	...
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()

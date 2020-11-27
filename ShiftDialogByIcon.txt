@@ -1,0 +1,125 @@
+// 在标题栏中设一四向图标，分成四小块，表示四个朝向，同时设四个光标，在其上时显示方向，左点即移动
+// ------------------------------------------------------------------------------------------------------------------------------------
+// [01/03] 
+// ParkCornerIcon.h
+#include "ParkCorner.h"
+#define COUNT_ARROW 4
+class CParkCornerIcon : public CParkCorner  
+{
+public:
+	CParkCornerIcon();
+	virtual ~CParkCornerIcon();
+	void InitIcon();
+	void InitCursor();
+	void InitRect();
+	int GetWhichSite(CPoint pt);
+	void MyShift();
+	CRect m_rShiftAll,m_rShiftArrow[COUNT_ARROW];
+	HCURSOR m_hCursor[COUNT_ARROW];
+	int m_nWhich;
+};
+// ------------------------------------------------------------------------------------------------------------------------------------
+// [02/03] 初始化矩形，光标，取得序号，利用父类函数作移动
+// ParkCornerIcon.cpp
+CParkCornerIcon::CParkCornerIcon()
+{
+	InitIcon();
+	InitCursor();
+	InitRect();
+}
+CParkCornerIcon::~CParkCornerIcon()
+{
+}
+void CParkCornerIcon::InitIcon()
+{
+
+}
+void CParkCornerIcon::InitCursor()
+{
+	m_hCursor[0]=AfxGetApp()->LoadCursor(IDC_CURSOR_LEFT_TOP);
+	m_hCursor[1]=AfxGetApp()->LoadCursor(IDC_CURSOR_RIGHT_TOP);
+	m_hCursor[2]=AfxGetApp()->LoadCursor(IDC_CURSOR_LEFT_BOTTOM);
+	m_hCursor[3]=AfxGetApp()->LoadCursor(IDC_CURSOR_RIGHT_BOTTOM);
+}
+void CParkCornerIcon::InitRect()
+{
+	// 图标左界 
+#define LEFT 3
+#define TOP 4
+#define WIDTH_CAPTION_ICON 163
+#define RIGHT 5
+#define WIDTH_SHIFT 19
+#define WIDTH_ARROW 8
+	CRect r;
+	r.right=LEFT+WIDTH_CAPTION_ICON-RIGHT;
+	r.left=r.right-WIDTH_SHIFT;
+	r.top=TOP;
+	r.bottom=r.top+WIDTH_SHIFT;
+	m_rShiftAll=r;
+	m_rShiftArrow[0]=m_rShiftArrow[1]=m_rShiftArrow[2]=m_rShiftArrow[3]=r;
+	int i=0;
+	m_rShiftArrow[i].right=m_rShiftArrow[i].left+WIDTH_ARROW;
+	m_rShiftArrow[i].bottom=m_rShiftArrow[i].top+WIDTH_ARROW;
+	i=1;
+	m_rShiftArrow[i].left=m_rShiftArrow[i].right-WIDTH_ARROW;
+	m_rShiftArrow[i].bottom=m_rShiftArrow[i].top+WIDTH_ARROW;
+	i=2;
+	m_rShiftArrow[i].right=m_rShiftArrow[i].left+WIDTH_ARROW;
+	m_rShiftArrow[i].top=m_rShiftArrow[i].bottom-WIDTH_ARROW;
+	i=3;
+	m_rShiftArrow[i].left=m_rShiftArrow[i].right-WIDTH_ARROW;
+	m_rShiftArrow[i].top=m_rShiftArrow[i].bottom-WIDTH_ARROW;
+	i=-1;
+	while(++i<COUNT_ARROW){
+		;//o<<"m_rShiftArrow[">>i>>"]=">>m_rShiftArrow[i];
+	}
+}
+int CParkCornerIcon::GetWhichSite(CPoint pt)
+{
+	m_nWhich=-1;
+	int i=-1;
+	while(++i<COUNT_ARROW){
+		if(m_rShiftArrow[i].PtInRect(pt)){
+			m_nWhich=i;
+			break;
+		}
+	}
+	return m_nWhich;
+}
+void CParkCornerIcon::MyShift()
+{
+	if(BETWEEN(0,m_nWhich,4)){
+		ParkCorner(m_nWhich); // 父类函数
+	}
+}
+// ------------------------------------------------------------------------------------------------------------------------------------
+// [03/03] 在对话框类的预处理消息中启动判断与移动
+// Clipboard2Email.cpp::PreTranslateMessage(MSG* pMsg){
+// ...
+	CPoint pt0,pt1;
+	CRect rd;
+	int nWhich=-1;
+	switch(pMsg->message){
+	case WM_NCMOUSEMOVE:
+		::GetCursorPos(&pt0);
+		GetWindowRect(&rd);
+		pt1.x=rd.left;
+		pt1.y=rd.top;
+		pt0-=pt1; //o<<"pt0=">>pt0;
+		if(	(m_rIconLeft.PtInRect(pt0))||
+			(m_rIconRight.PtInRect(pt0)) ){
+			::SetCursor(m_hCursor);
+		}
+		nWhich=CS::s_pParkCornerIcon->GetWhichSite(pt0); //o<<"nWhich=">>nWhich; // 四角移动判断
+		if(BETWEEN(0,nWhich,4)){
+			 //o<<"%% nWhich=">>nWhich;
+			::SetCursor(CS::s_pParkCornerIcon->m_hCursor[nWhich]);
+			return TRUE;
+		}
+		break;
+	case WM_NCLBUTTONDBLCLK:
+		m_nCorner=(::GetKeyState(VK_SHIFT)<0)*2+(::GetKeyState(VK_CONTROL)<0);
+		CS::s_pParkCorner->ParkCorner(m_nCorner);
+	case WM_NCLBUTTONDOWN:
+		CS::s_pParkCornerIcon->MyShift(); // 四角移动执行
+		break;

@@ -1,0 +1,168 @@
+// --------------------------------------------------------------------------------------------------
+// [01] 在 Clipboard2EmailDlg.h 声明函数
+// OnChangeCbChain -- 当复制通知消息链节点改变时
+// OnDrawClipboard -- 当粘贴板时入新内容时
+	HWND m_hNextClipboard; // 在复制通知链当前节点的下一个节点的窗口句柄
+	afx_msg void OnChangeCbChain(HWND hWndRemove, HWND hWndAfter); // Clipboard
+	afx_msg void OnDrawClipboard(); // Clipboard
+// --------------------------------------------------------------------------------------------------
+// [02] 发送通知消息
+// Clipboard2EmailDlg.cpp
+BEGIN_MESSAGE_MAP(CClipboard2EmailDlg, CDialog)
+	//{{AFX_MSG_MAP(CClipboard2EmailDlg)
+	ON_WM_CHANGECBCHAIN() // Clipboard
+	ON_WM_DRAWCLIPBOARD() // Clipboard
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+// --------------------------------------------------------------------------------------------------
+// [03] CClipboard2EmailDlg::OnInitDialog()
+	// 把对话框窗口作为节点插入到系统复制通知链中
+	PD->m_hNextClipboard=::SetClipboardViewer(PD->GetSafeHwnd()); // Clipboard
+// --------------------------------------------------------------------------------------------------
+// [04] CClipboard2EmailDlg::Close()
+	// 当本应用退出前，从复制消息通知链中移除本窗口的这个节点
+	PD->ChangeClipboardChain(PD->m_hNextClipboard); // Clipboard
+// --------------------------------------------------------------------------------------------------
+// [05] 具体移除节点操作
+void CClipboard2EmailDlg::OnChangeCbChain(HWND hWndRemove, HWND hWndAfter) // Clipboard
+{
+	CDialog::OnChangeCbChain(hWndRemove, hWndAfter);
+	// TODO: 在此处添加消息处理程序代码
+	if (m_hNextClipboard == hWndRemove)
+		m_hNextClipboard = hWndAfter;
+	else if (m_hNextClipboard){ //避免下一个窗口接收不到剪贴板的消息
+		::SendMessage(m_hNextClipboard, WM_CHANGECBCHAIN, (WPARAM)hWndRemove, (LPARAM)hWndAfter);
+	}
+}
+// --------------------------------------------------------------------------------------------------
+// [06] 在得知复制消息后本应用的动作
+
+
+void CClipboard2EmailDlg::OnDrawClipboard() // Clipboard
+{
+	// TODO: 在此处添加消息处理程序代码
+	//o<<"strAccountSend=">>m_SEP[0].strAccountSend;
+	//o<<"strAccountRecept=">>m_SEP[0].strAccountRecept;
+	//o<<"strSmtpSddr=">>m_SEP[0].strSmtpAddr;
+	//o<<"strAuthorizedCode=">>m_SEP[0].strAuthorizedCode;
+
+	CS::s_pGetFromClipboard=new CGetFromClipboard(m_pRichClipboard);
+	DEL(CS::s_pGetFromClipboard);
+	m_pRichClipboard->SetWindowText(CS::s_strClipboard.GetBuffer(0));
+	if(CS::s_pRichColorControl){
+		CS::s_pRichColorControl->SetForeColor(0);
+	}
+	//InsertAlarmChar();
+}
+// --------------------------------------------------------------------------------------------------
+// [07] 富编框颜色控制类 CRichColorControl
+// RichColorControl.h
+#define COUNT_COLOR 3
+class CRichColorControl  
+{
+public:
+	CRichEditCtrl* m_pRichClipboard;
+	CRichColorControl(CRichEditCtrl* pRichClipboard);
+	CRichColorControl();
+	virtual ~CRichColorControl();
+
+	void SetForeColor(int nIndexColor);
+	void SetLineForeColor();
+
+private:
+	COLORREF m_clr[COUNT_COLOR];
+	CHARFORMAT m_cf[COUNT_COLOR];
+	void MakeColorPicker();
+};CRichColorControl::CRichColorControl()
+{
+
+}
+
+CRichColorControl::CRichColorControl(CRichEditCtrl* pRichClipboard)
+{
+	if(pRichClipboard){
+		m_pRichClipboard=pRichClipboard;
+	}
+	MakeColorPicker();
+}
+// --------------------------------------------------------------------------------------------------
+// [08] RichColorControl.cpp
+CRichColorControl::~CRichColorControl()
+{
+
+}
+
+void CRichColorControl::SetForeColor(int nIndexColor)
+{
+	CHARRANGE cr0;
+	m_pRichClipboard->GetSel(cr0);
+	m_pRichClipboard->SetSel(0,-1);
+	m_pRichClipboard->SetSelectionCharFormat(m_cf[nIndexColor]);
+	m_pRichClipboard->SetSel(cr0);
+}
+
+void CRichColorControl::SetLineForeColor()
+{
+	//o<<"SetLineForeColor";
+	int nLineNoCur=m_pRichClipboard->LineFromChar(-1); //o<<"nLineNoCur=">>nLineNoCur;
+	int nLineCount=m_pRichClipboard->GetLineCount(); //o<<"nLineCount=">>nLineCount;
+	int nLength=m_pRichClipboard->GetTextLength(); //o<<"nLength=">>nLength;
+	CHARRANGE cr0,cr;
+	cr.cpMin=m_pRichClipboard->LineIndex(-1);
+	cr.cpMax=(nLineNoCur+1==nLineCount)?nLength:(m_pRichClipboard->LineIndex(nLineNoCur+1)); //o<<"cr=">>cr;
+	m_pRichClipboard->GetSel(cr0);
+	//o<<"cr0=">>cr0;
+	//o<<"m_cf[2]=">>m_cf[2];
+	m_pRichClipboard->SetSel(0,-1);
+	m_pRichClipboard->SetSelectionCharFormat(m_cf[0]);
+	m_pRichClipboard->SetSel(cr);
+	m_pRichClipboard->SetSelectionCharFormat(m_cf[2]);
+	m_pRichClipboard->SetSel(cr0);
+}
+
+/*
+nIndex一个常数，指出特定的windows显示对象。取值如下：
+0.COLOR_SCROLLBAR [0]：滚动条。
+1. COLOR_BACKGROUND [1]：windows桌面。
+2. COLOR_ACTIVECAPTION [2]：活动窗口的标题。
+3. COLOR_INACTIVECAPTION [3]:不活动窗口的标题。
+4.COLOR_MENU [4]：菜单。
+5. COLOR_WINDOW [5]：窗口背景；
+6. COLOR_WINDOWFRAME [6]：窗框；
+7.COLOR_MENUTEXT [7]：菜单正文；
+8. COLOR_WINDOWTEXT [8]：窗口正文；
+9. COLOR_CAPTIONTEXT [9]：窗口标题中的文字；
+10. COLOR_ACTIVEBORDER [10]：活动窗口的边框；
+11. COLOR_INACTIVEBORDER [11]：不活动窗口的边框；
+12.COLOR_APPWORKSPACE [12]：MDI桌面的背景；
+13.COLOR_HIGHLIGHT [13]：选定的项目背景；
+14.COLOR_HIGHLIGHTTEXT [14]：选定的项目文字；
+15. COLOR_BTNFACE [15]：按钮；
+16.COLOR_BTNSHADOW [16]：按钮的3D阴影。
+17.COLOR_GRAYTEXT [17]：灰色文字；如使用了抖动技术则为零；
+18.COLOR_BTNTEXT [18]：按钮文字；
+19.COLOR_INACTIVECAPTIONTEXT [19]：不活动窗口的文字；
+20.COLOR_BTNHIGHLIGHT [20]：按钮的3D加亮区；
+21.COLOR_3DDKSHADOW [21]：3D深阴影；
+22.COLOR_3DLIGHT [22]：3D阴影化对象的浅色；
+23. COLOR_INFOTEXT [23]：工具提示的文本色；
+24.COLOR_INFOBK [24]：工具提示的背景色；
+*/
+void CRichColorControl::MakeColorPicker()
+{
+	// 1. COLOR_BACKGROUND [1]：windows桌面。
+	// 2. COLOR_ACTIVECAPTION [2]：活动窗口的标题。
+	m_clr[0]=::GetSysColor(1);
+	m_clr[1]=::GetSysColor(2);
+	m_clr[2]=RGB(0xff,0,0,);
+
+	PD->m_pRichClipboard->GetDefaultCharFormat(m_cf[0]);
+	m_cf[2]=m_cf[1]=m_cf[0];
+	m_cf[1].dwEffects&=~CFE_AUTOCOLOR;
+    m_cf[1].dwMask|=CFM_COLOR;
+    m_cf[1].crTextColor=m_clr[1];
+	m_cf[2].dwEffects&=~CFE_AUTOCOLOR;
+    m_cf[2].dwMask|=CFM_COLOR;
+    m_cf[2].crTextColor=m_clr[2];
+
+}

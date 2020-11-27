@@ -1,0 +1,434 @@
+// --------------------------------------------------------------------------------------------------
+// [00] 系统左上角图标动感处理，因为发邮耗时较长，伪加速显示提高用户体验
+// --------------------------------------------------------------------------------------------------
+// [01] 进度条先走水平，后垂直向上，最一显示箭头，是以红点及右下方的灰点同时显示，因此就有像素对之说
+        通过一个类处理，以使运算简洁
+// PointPair.h
+// 像素对对象的递增
+// 首画点相对于图的坐标
+// 位图尺寸：24*24
+#define FIRST_PIXEL_X 5
+#define FIRST_PIXEL_Y 19
+class CPointPair  
+{
+public:
+	CPointPair();
+	CPointPair(CPoint& pt0,CPoint& pt1); // 像素对
+	CPointPair(int& x0,int& y0,int& x1,int& y1); // 四个坐标分量值
+	virtual ~CPointPair();
+
+	CPointPair operator=(CPointPair pp); // 像素对赋值
+	CPointPair operator+=(CPoint pt); // 像素对递增
+	CPointPair operator-=(CPoint pt); // 像素对递减
+
+	CPoint m_ptRed; // 红色点坐标
+	CPoint m_ptGray; // 灰色点坐标
+	//int m_x,m_y;
+
+};
+// --------------------------------------------------------------------------------------------------
+// [02] PointPair.cpp
+CPointPair::~CPointPair()
+{
+}
+
+//	int m_x,m_y; 取默认值
+CPointPair::CPointPair()
+: m_x(FIRST_PIXEL_X)
+, m_y(FIRST_pixel_Y)
+{
+	m_ptGray.x=m_x;
+	m_ptGray.y=m_y;
+	CPoint pt(1,1);
+	m_ptRed=m_ptGray;
+	m_ptRed-=pt;
+}
+
+// 来了两个点
+CPointPair::CPointPair(CPoint& pt0,CPoint& pt1)
+{
+	m_ptGray=pt0;
+	m_ptRed=pt1;
+}
+
+// 来了两个点的四个坐标分量
+CPointPair::CPointPair(int& x0,int& y0,int& x1,int& y1)
+{
+	m_ptGray.x=x0;
+	m_ptGray.y=y0;
+	m_ptRed.x=x1;
+	m_ptRed.y=y1;
+}
+
+// 像素对对象的赋值
+CPointPair CPointPair::operator=(CPointPair pp)
+{
+	m_ptGray.x=pp.m_ptGray.x;
+	m_ptGray.y=pp.m_ptGray.y;
+	m_ptRed.x=pp.m_ptRed.x;
+	m_ptRed.y=pp.m_ptRed.y;
+	return *this;
+}
+
+// 像素对对象的递增（可体现动感）
+CPointPair CPointPair::operator+=(CPoint pt)
+{
+	m_ptGray+=pt;
+	m_ptRed+=pt;
+	return *this;
+}
+
+// 像素对对象的递减（可体现动感）
+CPointPair CPointPair::operator-=(CPoint pt)
+{
+	m_ptGray-=pt;
+	m_ptRed-=pt;
+	return *this;
+}
+// --------------------------------------------------------------------------------------------------
+// [03] MyAnimation.h
+*sizeof(DWORD)
+/* 静态图           共执行步序  ┐ ┌ (每步执行次数)
+                    ■          ↓ ↓
+                  ■■■        15 1
+                ■■■■■      14 3
+              ■■□■□■■    13 5
+                □□■□  □□  12 5
+■■■■■■■■■■■□        11 1
+  ★□□□□□□□□□□        10 1
+  0 1 2 3 4 5 6 7 8 9 
+  1 1 1 1 1 1 1 1 1 1 (每步执行次数)
+★ 该点在图内的坐标 [X0,Y0]
+图相对于非客户区坐标m_x,m_y]
+
+  概述：
+  1.共有26对像素（红点加右下方灰点）
+  2.将分16次绘出，其中的灰点有时不绘
+                  01234567890123456789012345
+    TCHAR p[]=_T("11111111111111111101000000");
+  3.每一步给的次数不一样，
+                  0123456789012345
+    TCHAR N[]=_T("1111111111115531");
+  4.在进程中，绘到时则绘红灰点对，未绘到部分一律输入背景色
+  5.在发送前交由新线程执行，自然结束
+  6.初始化变动像素的位置，及红、灰、背景色
+  7.载入位图，读到DWORD数组,对需变动的像素进行赋值
+  8.整图交由 BitBlt() 送到非客区，开始有清空过程
+
+*/
+#include "PointPair.h" // @@
+
+// 位图尺寸
+#define WIDTH_A 24
+#define HEIGHT_A 24
+//                      箭底  箭尖
+#define COUNT_PIXEL (12+5+5+3+1)
+//                 箭杆|箭头
+#define COUNT_PIXEL_ALL (WIDTH_A*HEIGHT_A)
+
+class CMyAnimation  
+{
+public:
+	void SendBitmapToTitle(); // 把位图送到非客户区左上角
+	void Animation(); // 箭头从无到有的动感过程
+	void RecoverColor(); // 恢复图（未用）
+	void ClearColor(); // 让箭头消失
+	void PixelSet(int nIndex); // 更改像素的颜色属性
+	void InitPixelArray(); // 初始化组成箭头的像素在位图中的位置
+	CMyAnimation();
+	virtual ~CMyAnimation();
+
+	CBitmap* m_pBitmap; // 贴向左上角的位图 24*24
+	DWORD m_pBuf[COUNT_PIXEL_ALL]; // 正方形位图的像素数
+	// 像素对数组
+	CPointPair m_ptPair[COUNT_PIXEL],*m_pp; // @@
+
+	CPoint m_pt; // 像素位置
+	CRect m_rc; // 位图矩形
+
+};
+// --------------------------------------------------------------------------------------------------
+// [04] MyAnimation.cpp
+
+
+#define FLASH_GRAY RGB(192,192,192)
+#define FLASH_RED RGB(0,0,255)
+#define FLASH_CYAN RGB(229,207,188)
+
+CMyAnimation::CMyAnimation()
+{
+	m_pt.x=3+3;
+	m_pt.y=2;
+	CRect r(0,0,WIDTH_A,HEIGHT_A);
+	r+=m_pt;
+	m_rc=r;
+	m_pBitmap=new CBitmap();
+	InitPixelArray();
+}
+
+CMyAnimation::~CMyAnimation()
+{
+	DEL(m_pBitmap);
+	DEL(m_pp);
+}
+
+#define PP(i) m_ptPair[i]
+#define DISP_A(i) \
+	o<<"m_ptPair[">>i>>"]=">>PP(i).m_ptGray.x>>",">>PP(i).m_ptGray.y>>",">>\
+		PP(i).m_ptRed.x>>",">>PP(i).m_ptRed.y
+#define DISP_B(pp) \
+	o<<"pp=">>pp.m_ptGray.x>>",">>pp.m_ptGray.y>>",">>pp.m_ptRed.x>>",">>pp.m_ptRed.y
+
+void CMyAnimation::InitPixelArray()
+{
+	// 1.箭头位置
+#define X0 5
+#define Y0 18
+	CPointPair pp0;
+	if(1){
+		// 
+		//
+#define	COUNT_HORIZON 10
+		CPoint pt(1,0);
+		//m_pp=new CPointPair(X0,Y0,X0-1,Y0-1);
+		int x0=X0,y0=Y0,x1=X0-1,y1=Y0-1;
+		CPointPair pp(x0,y0,x1,y1);
+		//DISP_B(pp);
+		int i=-1;
+		while(++i<COUNT_HORIZON){
+			m_ptPair[i]=pp; //DISP_A(i);
+			pp+=pt; // 右延
+		}
+		pp0=pp;
+	}
+
+	if(1){
+		//
+		//
+#define COUNT_VERTICAL 6
+		CPoint 
+			pt0(0,1),
+			pt1(1,0),
+			pt2(2,0);
+
+		int i=-1;
+		CPointPair pp=pp0,pp1;
+		while(++i<COUNT_PIXEL-COUNT_HORIZON){
+			m_ptPair[i+COUNT_HORIZON]=pp; //DISP_A(i+COUNT_HORIZON); // 10,11,12,17,22,25
+			switch(i){
+			case 0:
+			case 1:
+				break;
+			case 2:
+				pp1=pp;
+				pp1-=pt2;
+				m_ptPair[++i+COUNT_HORIZON]=pp1; //DISP_A(i+COUNT_HORIZON); // 13
+				pp1-=pt1;
+				m_ptPair[++i+COUNT_HORIZON]=pp1; //DISP_A(i+COUNT_HORIZON); // 14
+				pp1=pp;
+				pp1+=pt2;
+				m_ptPair[++i+COUNT_HORIZON]=pp1; //DISP_A(i+COUNT_HORIZON); // 15
+				pp1+=pt1;
+				m_ptPair[++i+COUNT_HORIZON]=pp1; //DISP_A(i+COUNT_HORIZON); // 16			
+				break;
+			case 7:
+				pp1=pp;
+				pp1-=pt1;
+				m_ptPair[++i+COUNT_HORIZON]=pp1; //DISP_A(i+COUNT_HORIZON); // 18
+				pp1-=pt1;
+				m_ptPair[++i+COUNT_HORIZON]=pp1; //DISP_A(i+COUNT_HORIZON); // 19
+				pp1=pp;
+				pp1+=pt1;
+				m_ptPair[++i+COUNT_HORIZON]=pp1; //DISP_A(i+COUNT_HORIZON); // 20
+				pp1+=pt1;
+				m_ptPair[++i+COUNT_HORIZON]=pp1; //DISP_A(i+COUNT_HORIZON); // 21
+				break;
+			case 12:
+				pp1=pp;
+				pp1-=pt1;
+				m_ptPair[++i+COUNT_HORIZON]=pp1; //DISP_A(i+COUNT_HORIZON); // 23
+				pp1=pp;
+				pp1+=pt1;
+				m_ptPair[++i+COUNT_HORIZON]=pp1; //DISP_A(i+COUNT_HORIZON); // 24
+				break;
+			case 15:
+				break;
+			}
+
+			pp-=pt0; // 上提
+		}
+	}
+
+
+#define TERMINAL 18 // 从这个序号开始不画阴影像素
+
+	// 2.像素数组
+	m_pBitmap->LoadBitmap(IDB_BITMAP_CAPTION_ICON);
+	m_pBitmap->GetBitmapBits(COUNT_PIXEL_ALL*sizeof(DWORD),m_pBuf);
+}
+
+/* 进程图
+                    ▓
+                  ▓▓▓        15
+                ▓▓▓▓▓      14
+              ▓▓▓▓▓▓▓    13
+                ▓▓▓▓  ▓▓  12
+■■■▓▓▓▓▓▓▓▓▓        11
+  □□□▓▓▓▓▓▓▓▓        10
+  0 1 2 3 4 5 6 7 8 9 
+*/
+#define SHIFT(pt) ((pt.y*WIDTH_A)+pt.x)
+#define SET_PIXEL(pt,clr) \
+	m_pBuf[SHIFT(pt)]=clr
+
+void CMyAnimation::PixelSet(int nIndex)
+{
+	// 有几个位置的投影不画
+	//            01234567890123456789012345
+	TCHAR p[]=_T("11111111111111111101000000");
+	int i=-1;
+	while(++i<COUNT_PIXEL){
+		if(i<=nIndex){
+			SET_PIXEL(m_ptPair[i].m_ptRed,FLASH_RED);
+			if(p[i]-_T('0')){
+				SET_PIXEL(m_ptPair[i].m_ptGray,FLASH_GRAY);
+			}
+		}
+		else{
+			SET_PIXEL(m_ptPair[i].m_ptGray,FLASH_CYAN);
+			SET_PIXEL(m_ptPair[i].m_ptRed,FLASH_CYAN);
+		}
+	}
+}
+/* 清空图
+                    ▓
+                  ▓▓▓        15
+                ▓▓▓▓▓      14
+              ▓▓▓▓▓▓▓    13
+                ▓▓▓▓  ▓▓  12
+▓▓▓▓▓▓▓▓▓▓▓▓        11
+  ▓▓▓▓▓▓▓▓▓▓▓        10
+  0 1 2 3 4 5 6 7 8 9 
+*/
+void CMyAnimation::ClearColor()
+{
+	int i=-1;
+	while(++i<COUNT_PIXEL){ //o<<"i=">>i;
+		//o<<"0 m_pBuf[SHIFT]">>m_pBuf[SHIFT(m_ptPair[i].m_ptGray)];
+		SET_PIXEL(m_ptPair[i].m_ptGray,FLASH_CYAN); //o<<(m_ptPair[i].m_ptGray)>>",">>FLASH_CYAN;
+		SET_PIXEL(m_ptPair[i].m_ptRed,FLASH_CYAN); //o<<(m_ptPair[i].m_ptRed)>>",">>FLASH_CYAN;
+	}
+}
+
+/* 静态图           共执行步序  ┐ ┌ (每步执行次数)
+                    ■          ↓ ↓
+                  ■■■        15 1
+                ■■■■■      14 3
+              ■■□■□■■    13 5
+                □□■□  □□  12 5
+■■■■■■■■■■■□        11 1
+  □□□□□□□□□□□        10 1
+  0 1 2 3 4 5 6 7 8 9 
+  1 1 1 1 1 1 1 1 1 1 (每步执行次数)
+*/
+void CMyAnimation::RecoverColor()
+{
+	// 有几个位置的投影不画
+	//                         01234567890123456789012345
+	TCHAR p[COUNT_PIXEL+1]=_T("11111111111111111101000000");
+	int i=-1;
+	while(++i<COUNT_PIXEL){
+		SET_PIXEL(m_ptPair[i].m_ptGray,FLASH_RED);
+		if(p[i]-_T('0')){
+			SET_PIXEL(m_ptPair[i].m_ptRed,FLASH_GRAY);
+		}
+	}
+}
+
+#define COUNT_FRAME 16
+void CMyAnimation::Animation()
+{
+	// 每一帧的重复次数
+	//                       0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
+	int nStep [COUNT_FRAME]={1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 5, 3, 1};
+	int nStart[COUNT_FRAME]={0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,17,22,25};
+
+	int i=-1;
+	while(++i<COUNT_FRAME){ //o<<"i=">>i;
+		PixelSet(nStart[i]);
+		SendBitmapToTitle();
+		Sleep(200);
+	}
+}
+
+void CMyAnimation::SendBitmapToTitle()
+{
+	CRect r=m_rc;
+	//                       这个量类型虽是DWORD,但其单位仍是 byte, 所以*sizeof(DWORD)
+	m_pBitmap->SetBitmapBits(COUNT_PIXEL_ALL*sizeof(DWORD),m_pBuf); // 像素写回
+	CDC* pDC=PD->GetWindowDC();
+	CDC* pDisplayMemDC=new CDC;		// 后有删除
+	pDisplayMemDC->CreateCompatibleDC(pDC);
+	CBitmap* pOldBitmap=(CBitmap*)pDisplayMemDC->SelectObject(m_pBitmap);
+
+	pDC->BitBlt(r.left,r.top,r.Width(),r.Height(),pDisplayMemDC,0,0,SRCCOPY);
+
+	pDisplayMemDC->SelectObject(pOldBitmap); // 把当前位图设置成默认,撤消关联
+	pDisplayMemDC->DeleteDC();	// 此前 CreateCompatibleDC
+	DEL(pDisplayMemDC);
+	PD->ReleaseDC(pDC);		// 此前 GetWindowDC, 释放设备上下文
+}
+// --------------------------------------------------------------------------------------------------
+// [05] 调用时机：
+
+LRESULT CClipboard2EmailApp::OnHotKey(WPARAM wParam, LPARAM lParam)
+{
+	//o<<0;
+	if((LOWORD(lParam)==MOD_WIN)){
+		//o<<(CS::s_pGetHotKey->m_caHotKey[CS::s_pGetHotKey->m_nIndex].uHotKey);
+		if(HIWORD(lParam)==CS::s_pGetHotKey->m_caHotKey[CS::s_pGetHotKey->m_nIndex[0]].uHotKey){
+			//o<<"HotKey";
+			PlaySound(MAKEINTRESOURCE(IDR_WAVE1),AfxGetResourceHandle(),
+				SND_ASYNC|SND_RESOURCE|SND_NODEFAULT);//单次播放
+			if(CS::s_pRichColorControl){
+				CS::s_pRichColorControl->SetForeColor(1);
+			}
+			//PD->m_pThreadStaticShift=AfxBeginThread(ThreadStaticShift,&(PD->m_Info));
+			ThreadStaticShift(NULL);
+			PD->m_pThreadIconShift=AfxBeginThread(ThreadIconShift,&(PD->m_Info)); // 调用时机
+			CS::s_pSendEmail=new CSendEmail(PD->m_pRichClipboard,PD->m_ept);
+			DEL((CS::s_pSendEmail));
+			if(CS::s_pRichColorControl){
+				CS::s_pRichColorControl->SetForeColor(0);
+			}
+		}
+// --------------------------------------------------------------------------------------------------
+// [06] 新线程要做的工作：对 CMyAnimation 函数的调用
+UINT ThreadIconShift(LPVOID lpParam)
+{
+	CS::s_pMyAnimation->ClearColor(); CS::s_pMyAnimation->SendBitmapToTitle(); //Sleep(1000);
+	CS::s_pMyAnimation->Animation();
+	//CS::s_pMyAnimation->RecoverColor(); CS::s_pMyAnimation->SendBitmapToTitle();
+}
+// --------------------------------------------------------------------------------------------------
+// [07] 线程有关变量声明及线程创建
+
+
+// CClipboard2EmailDlg dialog
+#include "Clipboard2EmailDlgMate.h"
+#include "MyDialog.h"
+class CClipboard2EmailDlg 
+: public CMyDialog
+, public CClipboard2EmailDlgMate
+{
+// Construction
+public:
+	CClipboard2EmailDlg(CWnd* pParent = NULL);	// standard constructor
+	CWinThread* m_pThreadStaticShift,* m_pThreadIconShift; // 线程有关变量的创建
+
+Clipboard2EmailApp.cpp
+LRESULT CClipboard2EmailApp::OnHotKey(WPARAM wParam, LPARAM lParam)
+{
+	PD->m_pThreadIconShift=AfxBeginThread(ThreadIconShift,&(PD->m_Info)); // 调用时机
+
+

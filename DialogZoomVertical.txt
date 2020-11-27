@@ -1,0 +1,171 @@
+// 对话框纵向缩放
+// ------------------------------------------------------------------------------------------------------------------------------------
+// 对话框纵向缩放类 CMyZoom
+// [01/04] MyZoom.h 
+// 声明枚举变量
+// r--rich,s-static,c--combo,k--check,e--edit,p--progress
+#ifndef ENUM_CONTROL_RECT_DEFINED
+#define ENUM_CONTROL_RECT_DEFINED
+typedef enum _ENUM_CONTROL_RECT{
+	ecr_dialog=0, // 0 对话框
+	ecr_rclipboard, // 1 富编框
+	ecr_sindex, // 2 行号
+	ecr_scount, // 3 行数
+	ecr_cparam, // 4 下拉列表框
+	ecr_ksave, // 5 保存
+	ecr_kpaste, // 6 粘贴
+	ecr_kaddover, // 7 追加/覆盖
+	ecr_sclear, // 8 清空行
+	ecr_snumber, // 9 连续编号
+	ecr_sinfo, // 10 提示
+	ecr_efilename, // 11 文件名输入
+	ecr_pbar, // 12 进度条
+	ecr_szoom // 13 缩放
+}ENNU_CONTROL_RECT;
+#endif //!ENUM_CONTROL_RECT_DEFINED
+#define COUNT_CONTROL 14
+class CMyZoom  
+{
+public:
+	void Init(); // 初始化需变形或变位的控件的矩形
+	void ChangePositionSize(BOOL bState); // 改变之
+	CMyZoom();
+	virtual ~CMyZoom();
+	int m_nGeo[7]; // 系统尺寸
+	int m_nHeight_d[2]; // 对话框的两个高度
+	CBitmap m_bZoom[2]; // 两个位图，一个朝北，一个朝南
+	CRect m_rControl[COUNT_CONTROL][2]; // 存放所有需改变的控件的矩形
+};
+// ------------------------------------------------------------------------------------------------------------------------------------
+// [02/04] MyZoom.cpp 
+CMyZoom::CMyZoom()
+{
+	Init();
+}
+CMyZoom::~CMyZoom()
+{
+}
+// 把相对于屏幕坐标转换成相对客户区的坐标
+inline CRect ChangeTo(CRect r)
+{
+	CPoint pt0(r.left,r.top),pt=pt0;
+	ScreenToClient(PD->GetSafeHwnd(),&pt);
+	pt-=pt0;
+	CRect rc=r;
+	rc.OffsetRect(pt);
+	return rc;
+}
+#define HEIGHT_LOWER 4
+void CMyZoom::Init()
+{
+	// 载入图标
+	m_bZoom[0].LoadBitmap(IDB_BITMAP_ARROW_SOUTH);
+	m_bZoom[1].LoadBitmap(IDB_BITMAP_ARROW_NORTH);
+	//          竖边宽      横边高      窗口宽    窗口高    标题栏高     屏宽        屏高
+	//          0           1           2         3         4            5           6
+	int para[]={SM_CXBORDER,SM_CYBORDER,SM_CXSIZE,SM_CYSIZE,SM_CYCAPTION,SM_CXSCREEN,SM_CYSCREEN};
+	// m_nGeo[7];
+	for(int i=0;i<7;i++){
+		m_nGeo[i]=GetSystemMetrics(para[i]);
+	}
+	CRect rd,rd0,rd1;
+	PD->GetWindowRect(&rd); //o<<"rd=">>rd;
+	m_nHeight_d[0]=rd.Height();
+	m_nHeight_d[1]=m_nGeo[6]-m_nGeo[4]*HEIGHT_LOWER; // 托盘高为标题栏高的2倍
+	int nExtend=m_nHeight_d[1]-m_nHeight_d[0]; // 对话框高度变化
+	CPoint pte(0,nExtend);
+	rd0=rd1=rd; //o<<"rd0=">>rd0;
+	m_rControl[ecr_dialog][0]=rd0;
+	rd1.top=m_nGeo[4];
+	rd1.bottom=rd1.top+m_nHeight_d[1];
+	m_rControl[ecr_dialog][1]=rd1;
+	// 富编辑框只是.bottom 的变化
+	CRect rr,rr0,rr1;
+	PD->m_pRichClipboard->GetWindowRect(&rr);
+	rr1=rr0=ChangeTo(rr);
+	rr1.bottom+=nExtend;
+	m_rControl[ecr_rclipboard][0]=rr0;
+	m_rControl[ecr_rclipboard][1]=rr1;
+	// 其它控件 .top, .bottom 均发生变化
+#define GETR(r,p) p->GetWindowRect(&r)
+#define GETR_PAIR(p,ecr) \
+	if(1){\
+		CRect r,r0,r1;\
+		GETR(r,p);\
+		r0=ChangeTo(r);\
+		m_rControl[ecr][0]=r0;\
+		r1=r0;\
+		r1+=pte;\
+		m_rControl[ecr][1]=r1;\
+	}
+#define DISPR_PAIR(ecr) \
+	o<<ecr>>": ">>m_rControl[ecr][0]>>", ">>m_rControl[ecr][1];
+
+	GETR_PAIR(PD->m_pStaticIndexLine	,ecr_sindex		); // 
+	GETR_PAIR(PD->m_pStaticCountLine	,ecr_scount		); // 
+	GETR_PAIR(PD->m_pComboParam			,ecr_cparam		); // 
+	GETR_PAIR(PD->m_pCheckSave			,ecr_ksave		); // 
+	GETR_PAIR(PD->m_pCheckAutoPaste		,ecr_kpaste		); // 
+	GETR_PAIR(PD->m_pCheckAddOver		,ecr_kaddover	); // 
+	GETR_PAIR(PD->m_pStaticClearEmptyLine,ecr_sclear	); // 
+	GETR_PAIR(PD->m_pStaticNumberSerial	,ecr_snumber	); // 
+	GETR_PAIR(PD->m_pStaticInfo			,ecr_sinfo		); // 
+	GETR_PAIR(PD->m_pEditNetFileName	,ecr_efilename	); // 
+	GETR_PAIR(PD->m_pProgressCtrlColor	,ecr_pbar		); // 
+	GETR_PAIR(PD->m_pStaticZoom			,ecr_szoom		); // 
+	if(0){
+		int i=-1;
+		while(++i<COUNT_CONTROL){
+			DISPR_PAIR(i);
+		}
+	}
+}
+// 由 CXXDlg::OnStaticZoom() 调用
+void CMyZoom::ChangePositionSize(BOOL bState)
+{
+	// 取得对话框的现有矩形，只取左右值
+	CRect rd,rd0,rd1;
+	PD->GetWindowRect(&rd);
+	rd1=rd0=rd;
+	rd1.top=m_nGeo[4];
+	rd1.bottom=rd1.top+m_nHeight_d[1];
+	m_rControl[ecr_dialog][0].left=rd0.left;
+	m_rControl[ecr_dialog][0].right=rd0.right;
+	m_rControl[ecr_dialog][1].left=rd1.left;
+	m_rControl[ecr_dialog][1].right=rd1.right;
+#define MOVE_WINDOW(p,ecr,bState) \
+	p->MoveWindow(m_rControl[ecr][bState])
+	//DISPR_PAIR(ecr_dialog);
+	// 移动之
+	MOVE_WINDOW(PD							,ecr_dialog,	bState); // 
+	MOVE_WINDOW(PD->m_pRichClipboard		,ecr_rclipboard,bState); // 
+	MOVE_WINDOW(PD->m_pStaticIndexLine		,ecr_sindex,	bState); // 
+	MOVE_WINDOW(PD->m_pStaticCountLine		,ecr_scount,	bState); // 
+	MOVE_WINDOW(PD->m_pComboParam			,ecr_cparam,	bState); // 
+	MOVE_WINDOW(PD->m_pCheckSave			,ecr_ksave,		bState); // 
+	MOVE_WINDOW(PD->m_pCheckAutoPaste		,ecr_kpaste,	bState); // 
+	MOVE_WINDOW(PD->m_pCheckAddOver			,ecr_kaddover,	bState); // 
+	MOVE_WINDOW(PD->m_pStaticClearEmptyLine	,ecr_sclear,	bState); // 
+	MOVE_WINDOW(PD->m_pStaticNumberSerial	,ecr_snumber,	bState); // 
+	MOVE_WINDOW(PD->m_pStaticInfo			,ecr_sinfo,		bState); // 
+	MOVE_WINDOW(PD->m_pEditNetFileName		,ecr_efilename,	bState); // 
+	MOVE_WINDOW(PD->m_pProgressCtrlColor	,ecr_pbar,		bState); // 
+	MOVE_WINDOW(PD->m_pStaticZoom			,ecr_szoom,		bState); // 
+	PD->m_pStaticZoom->SetBitmap(m_bZoom[bState]); // 改变三角图标向状态
+
+	REFRESH0; // 重画非客区
+}
+// ------------------------------------------------------------------------------------------------------------------------------------
+// [03/04] 在 CXXDlg::OnTimer() 中初始化
+	static CMyZoom* s_pMyZoom; // S.h
+	CMyZoom	*CS::s_pMyZoom=NULL; // S.cpp
+	CS::s_pMyZoom=new CMyZoom(); // CXXDlg::OnTimer() 
+	DEL((CS::s_pMyZoom)); // CXXDlg::OnClose()
+// ------------------------------------------------------------------------------------------------------------------------------------
+// [04/04] 调用
+void CClipboard2EmailDlg::OnStaticZoom() 
+{
+	// TODO: Add your control notification handler code here
+	m_bZoom=!m_bZoom;
+	CS::s_pMyZoom->ChangePositionSize(m_bZoom);
+}

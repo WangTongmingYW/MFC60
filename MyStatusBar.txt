@@ -1,0 +1,161 @@
+// 自定义状态条，里面有静态框，编辑框，下拉列表框和进度条等
+// ------------------------------------------------------------------------------------------------------------------------------------
+// [01/03] 
+// MyStatusBar.h
+#define COUNT_GRID 14
+#define HEIGHT_STATUSBAR 20
+#define GAP_STATUSBAR 6
+class CMyStatusBar  
+{
+public:
+	void MyDraw(); // 画状态条轮廓
+	CMyStatusBar();
+	virtual ~CMyStatusBar();
+
+	void InitStatusBar(); // 初始化矩形参数
+	COLORREF m_Color[2];
+	CPoint m_pLeftWidth[COUNT_GRID];
+	CRect m_rGrid[COUNT_GRID]; // +1 外框
+	CRect m_rClient;
+};
+
+// ------------------------------------------------------------------------------------------------------------------------------------
+// [02/03]
+// MyStatusBar.cpp
+CMyStatusBar::CMyStatusBar()
+{
+
+}
+
+extern CRect ChangeTo(CRect r);
+
+// pp CPoint , p 控件指针
+#define GLW(pp,p,i) \
+	if(1){\
+		CRect r0,r;\
+		p->GetWindowRect(&r0);\
+		r=ChangeTo(r0); /*extern function*/\
+		(pp+i)->x=r.left;\
+		(pp+i)->y=r.Width();\
+	}
+
+#define DISPP \
+if(1){\
+	int i=-1;\
+	while(++i<COUNT_GRID){\
+		o<<i>>": ">>pp[i].x>>", ">>pp[i].y;\
+	}\
+}
+extern CRect ChangeTo(CRect r);
+inline void GetLeftWidthGrid(CPoint* pp)
+{	
+	GLW(pp,PD->m_pStaticZoomVertical	, 0); // 垂直缩放
+	GLW(pp,PD->m_pStaticZoomHorizon		, 1); // 水平缩放
+	GLW(pp,PD->m_pStaticIndexLine		, 2); // 行号
+	GLW(pp,PD->m_pStaticCountLine		, 3); // 行数
+	GLW(pp,PD->m_pCheckSave			, 4); // 存为文件
+	GLW(pp,PD->m_pCheckAutoPaste		, 5); // 自动粘贴
+	GLW(pp,PD->m_pCheckAddOver		, 6); // 追加/覆盖
+	GLW(pp,PD->m_pStaticClearEmptyLine	, 7); // 清除空行
+	GLW(pp,PD->m_pStaticNumberSerial	, 8); // 注解行编号
+	GLW(pp,PD->m_pStaticInfo		, 9); // 信息提示
+	GLW(pp,PD->m_pEditNetFileName		,10); // 文件名输入框
+	GLW(pp,PD->m_pProgressCtrlColor		,11); // 进度条
+	GLW(pp,PD->m_pComboParam		,12); // 下拉列表框
+	GLW(pp,PD->m_pStaticInfoMore		,13); // 更多提示
+
+	//GLW(PD->m_,12);
+	//DISPP; // 显示
+}
+
+// 由 左/宽 构成靠底的矩形
+#define GET_RECT(pr,pp,i) \
+if(1){\
+	CRect r(pp[i].x,0,pp[i].x+pp[i].y,HEIGHT_STATUSBAR);\
+	pr[i]=r; /*o<<"pr[">>i>>"]=">>r;*/\
+}
+
+inline void GetRectGrid(CRect* pr,CPoint* pp)
+{
+	int j=-1;
+	while(++j<COUNT_GRID){
+		GET_RECT(pr,pp,j);
+	}
+}
+
+#define COLOR_GRAY 127
+#define COLOR_WHITE 255
+void CMyStatusBar::InitStatusBar()
+{
+	int m=COLOR_GRAY,n=COLOR_WHITE;
+	m_Color[1]=RGB(n,n,n);
+	m_Color[0]=RGB(m,m,m);
+
+	PD->GetClientRect(&m_rClient);
+
+	CPoint* pp=m_pLeftWidth;
+	GetLeftWidthGrid(pp); // global function
+
+	CRect *pr = m_rGrid;
+	GetRectGrid(pr,pp); // global function
+
+	CRect rdc;
+	PD->GetClientRect(&rdc);
+
+	CPoint pt(0,rdc.Height()-HEIGHT_STATUSBAR); //o<<"pt=">>pt;
+
+#define STRETCH 3 // because the gap between control is 6
+	int i=-1;
+	while(++i<COUNT_GRID){ //o<<"i=">>i;
+		m_rGrid[i]+=pt;
+		m_rGrid[i].InflateRect(STRETCH,0,STRETCH,0); //o<<"m_rGrid[">>i>>"]=">>m_rGrid[i];
+	}
+}
+
+CMyStatusBar::~CMyStatusBar()
+{
+
+}
+
+void CMyStatusBar::MyDraw()
+{
+	CDC* pDC=PD->GetDC();
+	int i=-1;
+	while(++i<COUNT_CONTROL){ //o<<"i=">>i;
+		pDC->Draw3dRect(m_rGrid[i],m_Color[0],m_Color[1]);
+	}
+	PD->ReleaseDC(pDC);
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------------
+// [03/03]
+// Clipboard2EmailDlg.cpp
+void CClipboard2EmailDlg::OnPaint() 
+{
+	if (IsIconic())
+	{
+		CPaintDC dc(this); // device context for painting
+
+		SendMessage(WM_ICONERASEBKGND, (WPARAM) dc.GetSafeHdc(), 0);
+
+		// Center icon in client rectangle
+		int cxIcon = GetSystemMetrics(SM_CXICON);
+		int cyIcon = GetSystemMetrics(SM_CYICON);
+		CRect rect;
+		GetClientRect(&rect);
+		int x = (rect.Width() - cxIcon + 1) / 2;
+		int y = (rect.Height() - cyIcon + 1) / 2;
+
+		// Draw the icon
+		dc.DrawIcon(x, y, m_hIcon);
+	}
+	else
+	{
+		// 自定义状态条
+		if(CS::s_pMyStatusBar){
+			CS::s_pMyStatusBar->InitStatusBar();
+			CS::s_pMyStatusBar->MyDraw();
+		}
+		CDialog::OnPaint();
+	}
+}

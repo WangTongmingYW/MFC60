@@ -1,0 +1,139 @@
+// --------------------------------------------------------------------------------------------------
+// [01] 自定义菜单项追加到系统菜单
+// 
+// --------------------------------------------------------------------------------------------------
+// [02] 以下是通过交互界面输入的菜单项，代码由系统维护
+/////////////////////////////////////////////////////////////////////////////
+// Menu
+// DISCARDABLE 内存属性，无需要时可丢弃
+
+IDR_MENU_DEVELOP MENU DISCARDABLE 
+BEGIN
+    POPUP "开发文档"
+    BEGIN
+        MENUITEM "对话框界面美化",              IDM_DIALOG_BEAUTIFUL
+        MENUITEM "窗口置顶",                    IDM_TOPMOST
+        MENUITEM "窗口透明",                    IDM_TRANSPARENT
+        MENUITEM "托盘图标",                    IDM_TRAY
+        MENUITEM "粘贴板读写",                  IDM_CLIPBOARD
+        MENUITEM "系统菜单操作",                IDM_SYSTEM_MENU
+        MENUITEM "记事本劫持",                  IDM_NOTEPAD
+        MENUITEM "富编辑框调色板",              IDM_PALETTE
+        MENUITEM "参数输入与保存",              IDM_PARAM_INPUT_SAVE
+        MENUITEM "窗口规避泊坞",                IDM_PARKER
+        MENUITEM "发送邮件",                    IDM_SEND_EMAIL
+        MENUITEM "文本文件加密",                IDM_ENCRYPT
+        MENUITEM "复制读取",                    IDM_COPY_READ
+        MENUITEM "热键查询",                    IDM_HOTKEY_FIND
+        MENUITEM "热键运用",                    IDM_HOTKEY_USE
+    END
+END
+// --------------------------------------------------------------------------------------------------
+// [03] 系统菜单左点按钮消息送到这
+void CClipboard2EmailDlg::OnSysCommand(UINT nID, LPARAM lParam)
+{
+	if ((nID & 0xFFF0) == IDM_ABOUTBOX)
+	{
+		CAboutDlg dlgAbout;
+		dlgAbout.DoModal();
+	}
+	else
+	{
+		// 系统菜单项左单击所产生的消息汇入此
+		//o<<"**id=">>(int)nID;
+		switch(nID){
+		case IDM_CLIPBOARD:		o<<_T("CLIPBOARD");		break;
+		case IDM_SYSTEM_MENU:	o<<_T("SYSTEM_MENU");	break;
+		case IDM_NOTEPAD:		o<<_T("NOTEPAD");		break;
+		case IDM_PALETTE:		o<<_T("PALETTE");		break;
+		case IDM_PARAM_INPUT_SAVE: o<<_T("INPUT_SAVE"); break;
+		case IDM_PARKER:		o<<_T("PARKER");		break;
+		case IDM_SEND_EMAIL:	o<<_T("SEND_EMAIL");	break;
+		case IDM_ENCRYPT:
+			o<<_T("ENCRYPT"); 
+			LoadFromResource(IDR_HTML_ENCRYPT);
+			GetStrFromTextResource(IDR_TEXT_ENCRYPT);
+			break;
+		case IDM_COPY_READ:		o<<_T("COPY_READ");		break;
+		case IDM_HOTKEY_FIND:
+			o<<_T("HOTKEY_FIND"); 
+			LoadFromResource(IDR_HTML_HOTKEY_FIND);
+			GetStrFromTextResource(IDR_TEXT_HOTKEY_FIND);
+			break;
+		case IDM_HOTKEY_USE:
+			o<<_T("HOTKEY_USE"); 
+			LoadFromResource(IDR_HTML_HOTKEY_USE);
+			GetStrFromTextResource(IDR_TEXT_HOTKEY_USE);
+			break;
+		case IDM_DIALOG_BEAUTIFUL:o<<_T("DIALOG_BEAUTIFUL");break;
+		case IDM_TOPMOST: 
+			LoadFromResource(IDR_HTML_TOPMOST);
+			GetStrFromTextResource(IDR_TEXT_TOPMOST);
+			break;
+		case IDM_TRANSPARENT: 
+			LoadFromResource(IDR_HTML_TRANSPARENT);
+			GetStrFromTextResource(IDR_TEXT_TRANSPARENT);
+			break;
+		case IDM_TRAY: 
+			LoadFromResource(IDR_HTML_TRAY);
+			GetStrFromTextResource(IDR_TEXT_TRAY);
+			break;
+		//case IDM_: break;
+		default: break;
+		}
+
+		CDialog::OnSysCommand(nID, lParam);
+	}
+}
+// --------------------------------------------------------------------------------------------------
+// [04] 系统菜单中自定义菜单项的添加的自定义类 CMyMenu
+// MyMenu.h
+class CMyMenu  
+{
+public:
+	CMyMenu();
+	CMyMenu(CMenu* pMenu); 
+	virtual ~CMyMenu();
+
+	CMenu
+		* m_pMenu, // 指向对话框左上角的系统菜单
+		* m_pSubMenu; // 指向通过交互输入的菜单
+
+	int m_nCountItem; // 系统菜单项数，包括隔条，深入条
+
+	void AddMenuDevelop(); // 添加自定义菜单作为系统菜单的子菜单
+};
+// --------------------------------------------------------------------------------------------------
+// [05] MyMenu.cpp
+//////////////////////////////////////////////////////////////////////
+// Construction/Destruction
+//////////////////////////////////////////////////////////////////////
+CMyMenu::CMyMenu()
+{
+	m_pMenu=PD->GetMenu(); // 获取系统菜单指针
+	ASSERT(m_pMenu);
+}
+
+CMyMenu::CMyMenu(CMenu* pMenu)
+{
+	ASSERT(pMenu);
+	m_pMenu=pMenu; //o<<(DWORD)m_pMenu;
+	m_nCountItem=m_pMenu->GetMenuItemCount(); //o<<m_nCountItem;
+	AddMenuDevelop();
+}
+
+CMyMenu::~CMyMenu()
+{
+	DEL(m_pSubMenu);
+}
+
+// 菜单追加入分两步：新建指针变量，通过它载入
+void CMyMenu::AddMenuDevelop()
+{
+	m_pSubMenu=new CMenu();
+	m_pSubMenu->LoadMenu(IDR_MENU_DEVELOP); // 载入自定义菜单
+	m_pMenu->AppendMenu(
+		MF_BYPOSITION|MF_POPUP|MF_STRING,
+		(UINT)m_pSubMenu->GetSubMenu(0)->m_hMenu, // 0 表示最左列下拉菜单
+		_T("本系统开发文档")); // 显示在下拉菜单条的菜单项名
+}

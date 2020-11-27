@@ -1,0 +1,220 @@
+// --------------------------------------------------------------------------------------------------
+// [01] 父类 CHotKey 初始化数据对，提供从键值查键名的函数
+        本类 CGetHotKey 试测热键，记下序号，并从序号中查到键名称，存入数据 m_strHotKeyName[]中
+// --------------------------------------------------------------------------------------------------
+// [02] 父类代码如下
+// Hotkey.h
+#ifndef STRUCT_HOTKEY_DEFINED
+#define STRUCT_HOTKEY_DEFINED
+typedef struct _STRUCT_HOTKEY{
+	UINT uHotKey;
+	CString strHotKey;
+}STRUCT_HOTKEY;
+#endif //!STRUCT_HOTKEY_DEFINED
+
+#define CAHK CArray<STRUCT_HOTKEY,STRUCT_HOTKEY&>
+
+class CHotKey 
+{
+public:
+	CHotKey();
+	virtual ~CHotKey();
+
+	int m_nCount; // 被查询键总数
+	CAHK m_caHotKey; // 值-名数据对结构体
+	void MakeHotKeyPair(); // 生成值-名数据对结构体的数组类
+	CString GetStrFromIndex(UINT uIndex); // 从值查名
+
+};
+// --------------------------------------------------------------------------------------------------
+// [03] HotKey.cpp
+// 该类不会被 new 调用，因此构造与析构函数不能有代码
+CHotKey::CHotKey()
+{
+}
+
+CHotKey::~CHotKey()
+{
+}
+
+// 生成值-名数据对结构体的数组类
+void CHotKey::MakeHotKeyPair()
+{
+	// 键值初始化
+	UINT uHotKey[]={
+		// 大写字母 26
+		_T('A'),_T('B'),_T('C'),_T('D'),_T('E'),_T('F'),_T('G'),
+		_T('H'),_T('I'),_T('J'),_T('K'),_T('L'),_T('M'),_T('N'),
+		_T('O'),_T('P'),_T('Q'),_T('R'),_T('S'),_T('T'),
+		_T('U'),_T('V'),_T('W'),_T('X'),_T('Y'),_T('Z'),
+		// 功能键 12
+		VK_F1,VK_F2,VK_F3,VK_F4,VK_F5,VK_F6,
+		VK_F7,VK_F8,VK_F9,VK_F10,VK_F11,VK_F12,
+		// 主键盘数字 10
+		_T('0'),_T('1'),_T('2'),_T('3'),_T('4'),
+		_T('5'),_T('6'),_T('7'),_T('8'),_T('9'),
+		// 数字键盘数字 10
+		VK_NUMPAD0,VK_NUMPAD1,VK_NUMPAD2,VK_NUMPAD3,VK_NUMPAD4,
+		VK_NUMPAD5,VK_NUMPAD6,VK_NUMPAD7,VK_NUMPAD8,VK_NUMPAD9,
+		// 中键盘 10
+		VK_PRIOR,VK_NEXT,VK_END,VK_HOME,VK_INSERT,VK_DELETE,
+		VK_UP,VK_DOWN,VK_LEFT,VK_RIGHT,
+		// 运算符 5
+		VK_MULTIPLY,VK_ADD,VK_SUBTRACT,VK_DECIMAL,VK_DIVIDE,
+		// 其他 11
+		VK_BACK,VK_TAB,VK_RETURN,VK_SHIFT,VK_CONTROL,
+		VK_MENU,VK_PAUSE,VK_CAPITAL,VK_ESCAPE,VK_SPACE,
+		VK_PRINT
+	};
+
+	// 键名初始化
+	CString strHotKey[]={
+		// 大写字母 26
+		_T("A"),_T("B"),_T("C"),_T("D"),_T("E"),_T("F"),_T("G"),
+		_T("H"),_T("I"),_T("J"),_T("K"),_T("L"),_T("M"),_T("N"),
+		_T("O"),_T("P"),_T("Q"),_T("R"),_T("S"),_T("T"),
+		_T("U"),_T("V"),_T("W"),_T("X"),_T("Y"),_T("Z"),
+		// 功能键 12
+		_T("F1"),_T("F2"),_T("F3"),_T("F4"),_T("F5"),_T("F6"),
+		_T("F7"),_T("F8"),_T("F9"),_T("F10"),_T("F11"),_T("F12"),
+		// 主键盘数字 10
+		_T("0"),_T("1"),_T("2"),_T("3"),_T("4"),
+		_T("5"),_T("6"),_T("7"),_T("8"),_T("9"),
+		// 数字键盘数字 10
+		_T("「0」"),_T("「1」"),_T("「2」"),_T("「3」"),_T("「4」"),
+		_T("「5」"),_T("「6」"),_T("「7」"),_T("「8」"),_T("「9」"),
+		// 中键盘 10
+		_T("PageUp"),_T("PageDown"),_T("End"),_T("Home"),_T("Insert"),_T("Delete"),
+		_T("↑"),_T("↓"),_T("←"),_T("→"),
+		// 运算符 5
+		_T("*"),_T("+"),_T("-"),_T("."),_T("/"),
+		// 其他 11
+		_T("←"),_T("→┤"),_T("←┘"),_T("Shift"),_T("Ctrl"),_T("Alt"),
+		_T("PauseBreak"),_T("CapsLock"),_T("Esc"),_T("Space"),_T("Print")
+	};
+
+	// 存入结构体数组
+	m_caHotKey.RemoveAll();
+	STRUCT_HOTKEY sh;
+	int i=-1,limit=26+12+10+10+10+5+11;
+	m_nCount=limit;
+	while(++i<limit){
+		sh.uHotKey=uHotKey[i];
+		sh.strHotKey=strHotKey[i];
+		m_caHotKey.Add(sh);
+	}
+}
+
+// 从值查名
+CString CHotKey::GetStrFromIndex(UINT uIndex)
+{
+	CString str=_T("");
+	int i=-1,limit=m_nCount;
+	while(++i<limit){
+		if(uIndex==m_caHotKey[i].uHotKey){
+			str=m_caHotKey[i].strHotKey;
+			return str;
+		}
+	}
+	return str;
+}
+// --------------------------------------------------------------------------------------------------
+// [04] GetHotKey.h
+#include "HotKey.h" // 只用函数，不会碰构造析构函数
+#define COUNT_HOTKEY 5
+
+typedef struct _STRUCT_REGISTER{
+	BOOL bRegister; // 注册是否成功
+	ATOM aHotKey; // 与键值对应的注册成功时返回的原子值
+	UINT uHotKey; // 键值
+}STRUCT_REGISTER;
+
+class CGetHotKey : public CHotKey // 只用函数，不会碰构造析构函数
+{
+public:
+	CGetHotKey();
+	virtual ~CGetHotKey();
+
+	CString m_strHotKeyName[COUNT_HOTKEY]; // 选中好用的热键名字
+	STRUCT_REGISTER m_sRegister[COUNT_HOTKEY]; // 热键有关参数
+	BOOL RegisterIt(); // 注册之
+	BOOL UnRegisterIt(); // 取消注册之
+	int m_nIndex[COUNT_HOTKEY]; // 记下查到的热键在数组中的下标号
+
+};
+// --------------------------------------------------------------------------------------------------
+// [05] GetHotKey.cpp
+#include "S.h"
+//////////////////////////////////////////////////////////////////////
+// Construction/Destruction
+//////////////////////////////////////////////////////////////////////
+//#define AMB(p) AfxMessageBox(p)
+CGetHotKey::CGetHotKey()
+{
+	MakeHotKeyPair();
+	RegisterIt();
+	//CString str=GetStrFromIndex();
+}
+
+CGetHotKey::~CGetHotKey()
+{
+	UnRegisterIt();
+}
+
+/*
+typedef struct _STRUCT_REGISTER{
+	BOOL bRegister; // 注册是否成功
+	ATOM aHotKey; // 与键值对应的注册成功时返回的原子值
+	UINT uHotKey; // 键值
+}STRUCT_REGISTER;
+*/
+BOOL CGetHotKey::RegisterIt()
+{
+	//AfxMessageBox(_T("CString CGetHotKey::RegisterIt()"));
+	if(1){
+		int i=-1;
+		while(++i<COUNT_HOTKEY){
+			m_sRegister[i].bRegister=FALSE; // 初始化值
+		}
+	}
+
+	int nIndex_Hotkey=0; // 首个获得的、填入数组的0基下标
+
+	int i=-1,limit=m_nCount; //AMBN(m_nCount);
+	while(++i<limit){
+		if(nIndex_Hotkey==COUNT_HOTKEY){ // 查询完毕
+			return TRUE; // 完成 
+		}
+
+		m_sRegister[nIndex_Hotkey].bRegister=::RegisterHotKey( 
+			NULL, // 当前应用的句柄
+			m_sRegister[nIndex_Hotkey].aHotKey, // 原子值
+			MOD_WIN, // 热键大类别
+			m_caHotKey[i].uHotKey); // 热键值
+
+		if(m_sRegister[nIndex_Hotkey].bRegister){
+			//AMB("nIndex_Hotkey="); AMBN(nIndex_Hotkey); 
+			//ATOM a=m_sRegister[nIndex_Hotkey].aHotKey;
+			//AMBN((int)a);
+			m_nIndex[nIndex_Hotkey]=i; // 查到热键，它的下标
+			//AMBN(i);
+			m_strHotKeyName[nIndex_Hotkey]=m_caHotKey[i].strHotKey; // 查到热键，它的名称
+			++nIndex_Hotkey; // 为下次存放准备好下标
+			//int n=(int)(m_sRegister[nIndex_Hotkey].bRegister);
+			//AMBN(n);
+		}
+	}
+
+	return m_sRegister[nIndex_Hotkey].bRegister;
+}
+
+BOOL CGetHotKey::UnRegisterIt()
+{
+	int i=-1,limit=COUNT_HOTKEY;
+	while(++i<limit){
+		if(m_sRegister[i].bRegister){
+			::UnregisterHotKey(NULL,m_sRegister[i].aHotKey);
+		}
+	}
+	return TRUE;
+}

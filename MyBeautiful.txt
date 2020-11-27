@@ -1,0 +1,361 @@
+// --------------------------------------------------------------------------------------------------
+// [01] 在非客户区绘制
+// MyBeautiful.h
+#define BITMAP_NUM 10
+#ifndef TITLE_BAR_BITMAP_DEFINED
+#define TITLE_BAR_BITMAP_DEFINED
+typedef struct _TITLE_BAR_BITMAP{     // ┌─────────┐
+	int bitmapID;                     // │位图号            │
+	CRect crt;                        // │位图矩形          │
+	int w,h,                          // │位图宽高          │
+		repeat,                       // │重复次数          │
+		orient;                       // │方向（垂直/水平） │
+}TITLE_BAR_BITMAP;                    // └─────────┘
+#endif //!#ifndef TITLE_BAR_BITMAP_DEFINED// 美化对话框
+// 移动右上角的位图
+// 显示LOGO
+
+#include <afxtempl.h>
+
+#ifndef STRUCT_BEAUTIFUL_DEFINED
+#define STRUCT_BEAUTIFUL_DEFINED
+typedef struct _STRUCT_BEAUTIFUL{
+	CDialog* pDlg;
+	CString strCaption;
+}STRUCT_BEAUTIFUL;
+#endif //!STRUCT_BEAUTIFUL_DEFINED
+
+#ifndef ENUM_BEAUTIFUL_DEFINED
+#define ENUM_BEAUTIFUL_DEFINED
+typedef enum _ENUM_BEAUTIFUL{
+	eb_chief=0,
+	eb_about=1
+}ENUM_BEAUTIFUL;
+#endif //!ENUM_BEAUTIFUL_DEFINED
+
+typedef CArray<STRUCT_BEAUTIFUL*,STRUCT_BEAUTIFUL*&> _CAB;
+
+class CMyBeautiful  
+{
+public:
+	CMyBeautiful();
+	virtual ~CMyBeautiful();
+
+	CDC *m_pWinDC;
+	CDialog *m_pDlg;
+	CString m_str;
+	CMyBeautiful(CDialog *pDlg,CString str);
+
+	CSize m_sizerest;
+	int m_geo[5];
+	TITLE_BAR_BITMAP m_tbb[BITMAP_NUM];
+
+	// 取得窗口的参数:
+	// 竖边宽/横边高/窗口宽/窗口高/标题栏高
+	void bGetDialogGeo();
+
+	// 取得非客户区标题区/四角/四边的矩形及重复次数
+	void bConstructorTbb();
+
+	//CString strCaption); // 画图
+	void bDrawBitmap();
+
+	// 包括以上三个函数 
+	void bFrameIt();//CDialog* pDlg,CString strCaption); 
+	void bFrameIt(_CAB* pCab);
+};//extern TCHAR e_node_label_str[MAX_PATH];
+// --------------------------------------------------------------------------------------------------
+// [02] MyBeautiful.cpp
+
+CMyBeautiful *e_pmbtf=NULL;
+//////////////////////////////////////////////////////////////////////
+// Construction/Destruction
+//////////////////////////////////////////////////////////////////////
+
+CMyBeautiful::CMyBeautiful()
+{
+	m_geo[0]=-1;
+	m_tbb[0].bitmapID=-1;
+}
+
+CMyBeautiful::~CMyBeautiful()
+{
+
+}
+
+/*
+#define B_FRAME_IT			0x00000001
+#define B_SET_LEFT_ICON		0x00000002
+#define B_MOVE_RIGHT_BITMAP	0x00000004
+#define B_SET_LOGO			0x00000008
+#define B_SET_LOGO_SMALL	0x00000010
+*/
+
+CMyBeautiful::CMyBeautiful(CDialog *pDlg,CString str)
+{
+	m_pDlg=pDlg;
+	m_str=str;
+}
+
+// 取得对话框的各种几何参数
+void CMyBeautiful::bGetDialogGeo()	
+{
+	//          竖边宽      横边高      窗口宽    窗口高    标题栏高
+	int i,para[]={SM_CXBORDER,SM_CYBORDER,SM_CXSIZE,SM_CYSIZE,SM_CYCAPTION};
+	for(i=0;i<5;i++)
+		m_geo[i]=GetSystemMetrics(para[i]);
+}
+
+// 构建画标题栏非客户区的结构体
+#define CW 140 // 标题栏 LOGO 宽度
+#define R rd.right // 对话框右边
+#define B rd.bottom // 对话框底边
+#define M 3			// 位图的宽度/高度，有的是3，有的是geo[4] // 标题栏高
+#define N m_geo[4]	// 标题栏高
+#define G -23 
+
+// P--Plus,S--Substract
+#define MPN (M+N)
+#define MPN3 (M+N-3)
+#define RSM (R-M)
+#define RS37 (R-5-32)
+#define RS2M (R-M-M)
+#define BSM (B-M)
+#define BS2MN (B-M-N-M)
+#define MS1 (M-1)
+#define MP2 (M+2)
+#define RS5 (R-5)
+#define MPCW (M+CW)
+#define REPH (RS2M/M+RS2M%2) // 横向重复次数
+#define REPV (BS2MN/M+BS2MN%2) // 纵向重复次数
+
+void CMyBeautiful::bConstructorTbb()
+{
+	int lotusleft=0;
+	CRect rd, // 对话框矩形
+		crt[BITMAP_NUM]; // 非客户区边角的矩形
+	m_pDlg->GetWindowRect(&rd);	// 窗口矩形以屏幕左上角为原点
+	CPoint pt(-rd.left,-rd.top); // 转换成窗口矩形以窗口左上角为原点
+	rd.OffsetRect(pt);
+
+	m_sizerest.cx=R%M; 
+	m_sizerest.cy=B%M; // 3的余数
+
+	int id[BITMAP_NUM][9]={
+     /*┌────────────┬───────────┬─────┬──┬─┬─────┐
+       │                        │      位图矩形.crt    │ 铺图范围 │.rep│.o│          │   
+	   │位图号.bitmapID         ├──┬──┬──┬──┼──┬──┤重复│方│说明      │
+       │                        │左距│顶距│右距│底距│宽度│高度│次数│向│          │
+	   │0                       │1   │2   │3   │4   │5   │6   │7   │8 │          │*/
+		{IDB_BITMAP_TITLE_LEFT,	  0,    0,    M,    MPN,  M,    MPN,  1,    0}, // 0.左上  │
+		{IDB_BITMAP_TITLE,        M,    0,    RSM,  MPN,  RS2M, MPN,  REPH, 0}, // 1.上    │
+		{IDB_BITMAP_TITLE_RIGHT,  RSM,  0,    R,    MPN,  M,    MPN,  1,    0}, // 2.右上  │
+		{IDB_BITMAP_BOARD_LEFT,   0,    MPN,  M,    BSM,  M,    BS2MN,REPV, 1}, // 3.左边  │
+		{IDB_BITMAP_BOARD_RIGHT,  RSM,  MPN,  R,    BSM,  M,    BS2MN,REPV, 1}, // 4.右边  │
+		{IDB_BITMAP_BOTTOM_LEFT,  0,    BSM,  M,    B,    M,    M,    1,    0}, // 5.左下  │
+		{IDB_BITMAP_BOTTOM,       M,    BSM,  RSM,  B,    RS2M, M,    REPH, 0}, // 6.下    │
+		{IDB_BITMAP_BOTTOM_RIGHT, RSM,  BSM,  R,    B,    M,    M,    1,    0}, // 7.右下  │
+		{IDB_BITMAP_CAPTION,      M,    MS1,  MPCW, MPN,  CW,   MPN,  1,    0}, // 8.标题图│
+		{IDB_BITMAP_CLOSE_HOVER,  RS37, MP2,  RS5,  MPN3, 19,   17,   1,    0}  // 9.莲花图│
+		//                             ↑G在变                                             │
+	 /*└────────────┴──┴──┴──┴──┴──┴──┴──┴─┴─────┘*/
+
+	};
+
+	// 显示操作说明区域,
+	// ① -- 左距
+	// ② -- 顶距
+	// ③ -- 右距
+	// ④ -- 底距
+	// ┌──────┬──────┬─────────┐
+	// │对话框      ↓②          │                  │
+	// │        ┌─┴─────┐│                  │
+	// ├─①─→┤              │④                  │
+	// │        │某矩形        │↓                  │
+	// │        └───────┘┴                  │
+	// ├─────③─────→┤                    │
+	// └───────────────────────┘
+
+	CRect rcItem; // 在标题栏上可显示文字的范围
+	rcItem.left=id[8][3]+8; // 8-标题图, 3-右距
+	rcItem.right=id[9][1]-8; // 9-右图, 1-左距
+	rcItem.top=id[8][2]; // 8-标题图, 2-顶距
+	rcItem.bottom=id[8][4]; // 8-标题图, 4-底距
+
+	for(int i=0;i<BITMAP_NUM;i++){	
+		m_tbb[i].bitmapID=id[i][0]; // 控件标识号
+		m_tbb[i].crt.left=id[i][1]; // 左距
+		m_tbb[i].crt.top=id[i][2]; // 顶距
+		m_tbb[i].crt.right=id[i][3]; // 右矩
+		m_tbb[i].crt.bottom=id[i][4]; // 底距
+		m_tbb[i].w=id[i][5]; // 宽度
+		m_tbb[i].h=id[i][6]; // 高度
+		m_tbb[i].repeat=id[i][7]; // 重复次数
+		m_tbb[i].orient=id[i][8]; // 移动方向
+	}
+}
+#undef MPN
+#undef MPN3
+#undef RSM
+#undef RS24
+#undef RS2M
+#undef BSM
+#undef BS2MN
+#undef MS1
+#undef MP2
+#undef RS3
+#undef MPCW
+#undef REPH
+#undef REPV
+
+#undef G
+#undef N
+#undef M
+#undef B
+#undef R
+// 画边角线及标题栏图
+void CMyBeautiful::bDrawBitmap()//CString strCaption)
+{
+
+	CRect crt;
+	int ord[]={0,1,2,3,4,6,8,9,5,7};	// 让左下角5，右下角7，最后画
+	for(int i=0;i<BITMAP_NUM;i++){
+		CDC* pDC=m_pDlg->GetWindowDC();
+		//准备画标题栏 
+		CBitmap* pBitmap=new CBitmap;	// 后有删除
+#define DELETE_PBITMAP DEL(pBitmap)
+		CBitmap* pOldBitmap; 
+		CDC* pDisplayMemDC=new CDC;		// 后有删除
+#define DELETE_PDISPDC DEL(pDisplayMemDC)
+		pDisplayMemDC->CreateCompatibleDC(pDC);
+		crt=m_tbb[ord[i]].crt;
+		pBitmap->LoadBitmap(m_tbb[ord[i]].bitmapID);	
+		pOldBitmap=(CBitmap*)pDisplayMemDC->SelectObject(pBitmap);
+		// 取得位图属性，比如：bm.bmHeight
+		BITMAP bm;
+		HBITMAP hbitmap=(HBITMAP)pBitmap->GetSafeHandle();
+		GetObject(hbitmap,sizeof(BITMAP),&bm);
+		pDC->BitBlt(crt.left,crt.top,crt.Width(),crt.Height(),
+			pDisplayMemDC,0,0,SRCCOPY);
+		if(i==0||i==2||i==6||i==7||i==8||i==9){ // 6.标题栏图, 7.关闭图
+			continue;
+		}
+		else{
+			int m=3-m_sizerest.cx,n=3-m_sizerest.cy;
+
+#define DRAW			pDC->BitBlt(crt.left,crt.top,crt.right,crt.bottom,\
+							pDisplayMemDC,0,0,SRCCOPY)
+#define MOVE_RIGHT 		crt.left+=3; crt.right+=3
+#define MOVE_RIGHT_REST crt.left-=m; crt.right-=m
+#define MOVE_DOWN 		crt.top+=3;  crt.bottom+=3
+#define MOVE_DOWN_REST 	crt.top-=n;  crt.bottom-=n
+
+			if(m_tbb[i].orient==0){ // 横向画
+				for(int j=0;j<m_tbb[ord[i]].repeat;j++){ 
+					DRAW; MOVE_RIGHT; 
+				}
+				if(m_sizerest.cx){ // 画横向零头
+					MOVE_RIGHT_REST; DRAW; 
+				}
+			}
+			else{ // 纵向画
+				for(int j=0;j<m_tbb[ord[i]].repeat;j++){
+					DRAW; MOVE_DOWN; 
+				}
+				if(m_sizerest.cy){ // 画纵向零头
+					MOVE_DOWN_REST; DRAW; 
+				}
+			}
+
+#undef MOVE_DOWN_REST
+#undef MOVE_DOWN
+#undef MOVE_RIGHT_REST
+#undef MOVE_RIGHT
+#undef DRAW
+
+		}
+
+		// 把当前位图设置成默认,撤消关联
+		pDisplayMemDC->SelectObject(pOldBitmap);
+		// LoadBitmap() 的反操作, 从内存中剔除
+		pBitmap->DeleteObject();	
+		DELETE_PBITMAP;
+		pDisplayMemDC->DeleteDC();	// 此前 CreateCompatibleDC
+		DELETE_PDISPDC;
+		m_pDlg->ReleaseDC(pDC);		// 此前 GetWindowDC, 释放设备上下文
+	}
+
+	m_pWinDC=m_pDlg->GetWindowDC();
+	int lwidth=CW+4, // 左边图宽
+		rwidth=24+4, // 右边图宽
+		allwidth; // 窗口宽度
+	CRect rd;
+	m_pDlg->GetWindowRect(&rd);
+	allwidth=rd.Width();
+	// ├←───────────────────────→┤
+	//                   allwidth
+	// ├←──→┼←─────────────→┼←──→┤
+	//   lwidth                                     rwidth
+	CRect r(lwidth,6,allwidth-rwidth,22);
+	if(1){//m_pWinDC){
+		m_pWinDC->SetTextColor(RGB(0,128,128));
+		m_pWinDC->SetBkColor(RGB(188,207,229));
+		m_pWinDC->SetBkMode(TRANSPARENT);
+		CFont* pfont=new CFont();	// 后有删除
+#define DELETE_PFONT DEL(pfont)
+		BOOL tf=pfont->CreateFont(
+			12,	// fontStruct->Height	字体高度
+			0,	// fontStruct->Width	字体宽度
+			0,	// fontStruct->nEscapement	指定偏离垂线与x轴在显示面上的夹角（用0.1度单位）。
+			0,	// fontStruct->nOrientation	指定字符基线和x轴之间的夹角（用0.1度单位）
+			200,	// fontStruct->nWeight	指定字体磅数（用每1000点中墨点像素数计）使用缺省磅数
+			FALSE,	// fontStruct->bItalic
+			FALSE,	// fontStruct->bUnderline
+			FALSE,	// fontStruct->cStrikeOut
+			GB2312_CHARSET,	// fontStruct->nCharSet	指定字体的字符集
+			OUT_DEFAULT_PRECIS,	// fontStruct->nOutPrecision	指定所需的输出精度	
+			CLIP_DEFAULT_PRECIS,	// fontStruct->nClipPrecision	指定所需的剪贴精度
+			DEFAULT_QUALITY,		// fontStruct->nQuality			指示字体的输出质量
+			FIXED_PITCH|FF_MODERN,	// fontStruct->nPitchAndFamily	指定字体的间距和家族
+			_T("宋体"));			// fontStruct->nPitchAndFamily	字符串指定字体字样的名字
+
+		CFont* oldfont=m_pWinDC->SelectObject(pfont);
+		// e_node_label_str 后者为外部变量
+		m_pWinDC->DrawText(_G(m_str),__L(m_str),
+			&r,
+			DT_SINGLELINE|DT_VCENTER|DT_LEFT);
+		m_pWinDC->SelectObject(oldfont);
+		pfont->DeleteObject();
+		DELETE_PFONT;
+	}
+	m_pDlg->ReleaseDC(m_pWinDC);
+}
+
+// 调用
+void CMyBeautiful::bFrameIt()	// 美化非客户区
+{
+	// 它在 CXXXXDlg::InitDialog()  中初始化 CS::s_pDlg0=this;
+	m_pDlg=CS::s_pDlg0; 
+	m_str=CS::s_strCaption;
+	if(!m_pDlg) return;
+	if(m_geo[0]==-1){bGetDialogGeo();} // 获对话框几何参数
+	if(m_tbb[0].bitmapID==-1){bConstructorTbb();} // 构建绘画用结构体
+	bDrawBitmap();		// 实施画位图
+}
+
+// 调用
+void CMyBeautiful::bFrameIt(_CAB* pCab)	// 美化非客户区
+{
+	if(!pCab) return;
+	STRUCT_BEAUTIFUL* psb=NULL;
+	int i=-1,ilimit=pCab->GetUpperBound()+1;
+	while(++i<ilimit){
+		psb=(*pCab)[i];
+		m_pDlg=psb->pDlg;
+		if(!m_pDlg){ continue; }
+		m_str=psb->strCaption;
+		bGetDialogGeo();	// 获对话框几何参数
+		bConstructorTbb();	// 构建绘画用结构体
+		bDrawBitmap();		// 实施画位图
+	}
+}

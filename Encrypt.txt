@@ -1,0 +1,28 @@
+// --------------------------------------------------------------------------------------------------
+// [01] 文本文件用与或算法加密
+
+#ifndef STRUCT_ENCRYPT_DEFINED
+#define STRUCT_ENCRYPT_DEFINED
+typedef struct _STRUCT_ENCRYPT{
+	int size; // 字符长度，不以0号字符结束
+	TCHAR* pBuf; // 存放字符缓冲区
+}STRUCT_ENCRYPT;
+// --------------------------------------------------------------------------------------------------
+// [02] 文本加密算法函数
+#endif //!STRUCT_ENCRYPT_DEFINEDBOOL CFileInOut::DeCrypt(STRUCT_ENCRYPT*& pse)
+{
+	if(pse->size ==0){
+		return FALSE;
+	}
+	if(pse->pBuf==NULL){
+		return FALSE;
+	}
+	register unsigned int i=88,k; // i 偏移起点
+	register TCHAR *p=pse->pBuf;
+	k=pse->size;
+	do{
+		*p++^=((TCHAR)i++);	// 加解密算法
+	}while(k--);
+	pse->pBuf[pse->size]=0;
+	return TRUE;
+}

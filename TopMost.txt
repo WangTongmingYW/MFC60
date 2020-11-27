@@ -1,0 +1,11 @@
+// #define PD CS::s_pDlg0
+BOOL CClipboard2EmailDlgMate::TopMost()
+{
+	CRect cr;
+	GetWindowRect(PD->GetSafeHwnd(),&cr); // 取得对话框矩形
+	::SetWindowPos(PD->GetSafeHwnd(),HWND_TOPMOST, // 置顶
+		cr.left,cr.top,cr.Width(),cr.Height(),
+		SWP_NOACTIVATE); // 置顶后不激活
+
+	return TRUE;
+}

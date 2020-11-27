@@ -1,0 +1,58 @@
+// --------------------------------------------------------------------------------------------------
+// [01] 主对话框四角停泊
+// ParkCorner.h
+class CParkCorner  
+{
+public:
+	CParkCorner();
+	virtual ~CParkCorner();
+	void ParkCorner(int nSite);
+
+private:
+	CRect m_rCorner[4];
+	void MakeSiteRect();
+};
+// --------------------------------------------------------------------------------------------------
+// [02] ParkCorner.cpp
+
+
+CParkCorner::CParkCorner()
+{
+	MakeSiteRect();
+}
+
+CParkCorner::~CParkCorner()
+{
+
+}
+
+void CParkCorner::ParkCorner(int nSite)
+{
+	PD->MoveWindow(m_rCorner+nSite);
+}
+
+//private:
+//	CRect m_rCorner[4];
+void CParkCorner::MakeSiteRect()
+{
+	int sw=::GetSystemMetrics(SM_CXSCREEN),
+		sh=::GetSystemMetrics(SM_CYSCREEN),
+		nOffset=::GetSystemMetrics(SM_CYHSCROLL);
+
+	CRect rd;
+	PD->GetWindowRect(&rd);
+	int dw=rd.Width(),dh=rd.Height();
+
+	CRect r(0,0,dw,dh);
+	m_rCorner[0]=m_rCorner[1]=m_rCorner[2]=m_rCorner[3]=r;
+	CPoint 
+		pt0(nOffset,nOffset),
+		pt1(sw-nOffset-dw,nOffset),
+		pt2(nOffset,sh-nOffset-dh),
+		pt3(sw-nOffset-dw,sh-nOffset-dh);
+	CPoint pt[]={pt0,pt1,pt2,pt3};
+	int i=-1,limit=4;
+	while(++i<limit){
+		m_rCorner[i].OffsetRect(pt[i]);
+	}
+}

@@ -1,0 +1,150 @@
+// --------------------------------------------------------------------------------------------------
+// [01] 在主对话框的下面事件中绘制，但通常不起作用，因为此时对话框界面尚未生成
+BOOL CClipboard2EmailDlg::OnInitDialog()
+{
+	CDialog::OnInitDialog();
+	...	
+	// TODO: Add extra initialization here
+	CS::s_pDlg0=this;
+	REFRESH0; // @
+	Init();
+
+	return TRUE;  // return TRUE  unless you set the focus to a control
+}
+// --------------------------------------------------------------------------------------------------
+// [02] 在主对话框的时钟事件中执行一次
+void CClipboard2EmailDlg::OnTimer(UINT nIDEvent) 
+{
+	// TODO: Add your message handler code here and/or call default
+	if(m_bOnce){
+		m_bOnce=FALSE;
+		m_uTimeDelay=1000;
+		REFRESH0; // @
+		...
+	}
+}
+// --------------------------------------------------------------------------------------------------
+// [03] 在下拉列表框中某项需弹出子对话框，当关闭子对话框时，需重绘主对话框的非客户区
+void CClipboard2EmailDlg::OnClosepComboParam()
+{
+	...
+			CS::s_pDlgInput=new CInputDlg();
+			CS::s_pEmailParam=new CEmailParam(CS::s_pDlgInput);
+			DEL((CS::s_pDlgInput));
+			REFRESH0; // @
+}
+// --------------------------------------------------------------------------------------------------
+// [04] 在执行系统运作随后即需重绘
+#include "MyBeautiful.h"
+HINSTANCE hDll0=NULL,hDll=NULL; // DLL 句柄, 由挂勾程序返回
+HHOOK hHook0=NULL,hHook=NULL; 
+// 移动、缩放、激活、获焦、失焦、复原、最大化、不激活等系统事件过后随后就重绘
+#define POSSIBLE_MESSAGE \
+	 (pcs->message==WM_MOVE\
+	||pcs->message==WM_SIZE\
+	||pcs->message==WM_ACTIVATE\
+	||pcs->message==WM_SETFOCUS\
+	||pcs->message==WM_KILLFOCUS\
+	||pcs->message==SIZE_RESTORED\
+	||pcs->message==SIZE_MAXIMIZED\
+	||pcs->message==WM_NCACTIVATE)
+
+#define POSSIBLE_DIALOG \
+	 (pcs->hwnd==CS::s_pDlg0->GetSafeHwnd()) //'\
+	//'||pcs->hwnd==CS::s_pDlg1->GetSafeHwnd())
+// 这个全局函数供钩子调用
+LRESULT CALLBACK WindowMoveProc(int nCode,WPARAM wParam,LPARAM lParam)
+{
+	if(nCode==WH_CALLWNDPROCRET){
+		return CallNextHookEx(hHook,nCode,wParam,lParam); // 继续传递消息
+	}
+
+	// PCWPRET == Pointer_Call_Wnd_Proc_Return
+	PCWPRETSTRUCT pcs=NULL;
+	pcs=(PCWPRETSTRUCT)lParam;
+    if(pcs&&pcs->hwnd!=NULL){ // 所获句柄不空
+		TCHAR szClass[MAX_PATH]; GetClassName(pcs->hwnd,szClass,MAX_PATH); // 取得类名
+		if(strcmp(szClass,"#32770")==0){ // #32770 是对话框类名
+			if( POSSIBLE_DIALOG){ // 所获的句柄就是主窗口的句柄
+				if( POSSIBLE_MESSAGE){ // 对话框发上述消息时，
+					REFRESH0; // 重画非客户区
+					return CallNextHookEx(hHook,nCode,wParam,lParam); // 继续传递消息;
+				}
+			}
+	    }
+    }
+	return 1;
+}
+// --------------------------------------------------------------------------------------------------
+// [05] 钩子类，用于在系统动作前或后立即做
+// MyHook.h
+class CMyHook  
+{
+public:
+	CMyHook();
+	virtual ~CMyHook();
+
+	CDialog *m_pdlg;
+	BOOL StartHook(); // 用于构造
+	BOOL StopHook(); // 用于析构
+
+};
+// --------------------------------------------------------------------------------------------------
+// [06] 
+// MyHook.cpp
+CMyHook* e_pmyhook=NULL;
+//////////////////////////////////////////////////////////////////////
+// Construction/Destruction
+//////////////////////////////////////////////////////////////////////
+
+CMyHook::CMyHook()
+{
+	StartHook();
+	//WORD vkid[]={(WORD)VK_SNAPSHOT};
+	//if(::GetKeyState(VK_SHIFT)>=0){
+		//BOOL tf1=StartHook1(vkid,1,CS::s_pDlg0->GetSafeHwnd());
+	//	StartHook();
+	//}
+}
+
+CMyHook::~CMyHook()
+{
+	StopHook();
+	//StopHook1();
+}
+// HHOOK hHook;
+BOOL CMyHook::StartHook()
+{
+	hHook=SetWindowsHookEx(
+		//WH_CALLWNDPROC, // 挂钩类型, 在窗口处理前处理
+		WH_CALLWNDPROCRET, // 挂钩类型, 在窗口处理(这里是指移动)后处理
+		WindowMoveProc, // 指向处理子程, 必为全局回调函数
+		0, // 局部钩子, 必须指出线程[即参数4], 但该项为0
+		GetCurrentThreadId()); // 线程号, 局钩此项必给出
+	return hHook!=NULL;
+}
+
+BOOL CMyHook::StopHook()
+{
+	if(hHook) UnhookWindowsHookEx(hHook);
+	return 1;
+}
+// --------------------------------------------------------------------------------------------------
+// [07] S.h 
+// 把所有自定义类的指针变量都设置成静态的，供随地使用
+#include "MyHook.h"class CS  
+{
+public:
+	CS();
+	virtual ~CS();
+	static CMyHook* s_pMyHook; // 声明静态变量
+}
+// --------------------------------------------------------------------------------------------------
+// [08] 在 S.cpp 文件头部初始化静态变量
+CMyHook* CS::s_pMyHook=NULL;
+// --------------------------------------------------------------------------------------------------
+// [09] Clipboard2EmailDlg::OnInitDialog()
+	CS::s_pMyHook=new CMyHook(); // 勾子程序启动
+// --------------------------------------------------------------------------------------------------
+// [10] Clipboard2EmailDlg::OnClose()
+	DEL((CS::s_pMyHook)); // 勾子程序卸载

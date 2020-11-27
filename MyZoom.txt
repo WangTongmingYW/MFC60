@@ -1,0 +1,340 @@
+// 自定义缩放的编程
+// ------------------------------------------------------------------------------------------------------------------------------------
+// [01/03]
+// MyZoom.h
+// r--rich,s-static,c--combo,k--check,e--edit,p--progress
+#ifndef ENUM_CONTROL_RECT_DEFINED
+#define ENUM_CONTROL_RECT_DEFINED
+typedef enum _ENUM_CONTROL_RECT{
+	ecr_dialog=0, // 0 对话框
+	ecr_rclipboard, // 1 富编框
+	ecr_szoom_ver, // 2 缩放纵向
+	ecr_szoom_hor, // 3 缩放横向
+	ecr_sindex, // 4 行号
+	ecr_scount, // 5 行数
+	ecr_ksave, // 6 保存
+	ecr_kpaste, // 7 粘贴
+	ecr_kaddover, // 8 追加/覆盖
+	ecr_sclear, // 9 清空行
+	ecr_snumber, // 10 连续编号
+	ecr_sinfo, // 11 提示
+	ecr_efilename, // 12 文件名输入
+	ecr_pbar, // 13 进度条
+	ecr_cparam, // 14 下拉列表框
+	ecr_smore // 15 更多提示
+}ENNU_CONTROL_RECT;
+#endif //!ENUM_CONTROL_RECT_DEFINED
+
+#ifndef ENUM_STATE_DEFINED
+#define ENUM_STATE_DEFINED
+typedef enum _ENUM_STATE{
+	es_small=0,
+	es_thin,
+	es_flat,
+	es_big
+}ENUM_STATE;
+#endif //!ENUM_STATE_DEFINED
+
+#define COUNT_CONTROL 16
+class CMyZoom  
+{
+public:
+	void MySize(int nStyle);
+	void InitSmall(); // 小
+	void InitThin(); // 高
+	void InitFlat(); // 扁
+	void InitBig(); // 大
+	void GetFourState();
+	void InitBitmap();
+	void GetExtend();
+	void RefreshDialogPosition();
+
+	void GetGeo();
+
+	CMyZoom();
+	virtual ~CMyZoom();
+
+	int m_nGeo[7]; // 系统尺寸
+	int m_nHeight_d[2]; // 对话框的两个高度
+	int m_nWidth_d[2]; // 对话框的两个宽度
+	int m_nExtend[2]; // dx,dy
+	CRect m_rDialog;
+	CBitmap m_bZoomVertical[2],m_bZoomHorizon[2]; // 两个位图，一个朝北(西)，一个朝南(东)
+	CRect m_rControlVertical[COUNT_CONTROL][2]; // 存放所有需改变的控件的矩形
+	CRect m_rControlHorizon[COUNT_CONTROL][2]; // 存放所有需改变的控件的矩形
+	CPoint m_pXExtend,m_pYExtend;
+	CRect m_rControl[COUNT_CONTROL][4];
+};
+
+// ------------------------------------------------------------------------------------------------------------------------------------
+// [02/03] 自定义缩放的函数，先初始化四个状态的所有控件的矩形，然后接受数组索引，照索引的参数值移动控件 
+// MyZoom.cpp
+// 同时确立四种状态
+// 0,          1,  2,  3
+// 小（原始），高，扁，大
+CMyZoom::CMyZoom()
+{
+	InitBitmap();
+	GetFourState();
+}
+
+CMyZoom::~CMyZoom()
+{
+
+}
+
+void CMyZoom::GetGeo()
+{
+	//          竖边宽      横边高      窗口宽    窗口高    标题栏高     屏宽        屏高
+	//			0			1			2		  3			4			 5			 6
+	int para[]={SM_CXBORDER,SM_CYBORDER,SM_CXSIZE,SM_CYSIZE,SM_CYCAPTION,SM_CXSCREEN,SM_CYSCREEN};
+	// m_nGeo[7];
+	for(int i=0;i<7;i++){
+		m_nGeo[i]=GetSystemMetrics(para[i]); //o<<"m_nGeo[">>i>>"]=">>m_nGeo[i];
+	}
+}
+
+void CMyZoom::RefreshDialogPosition()
+{
+	// 四种状态，0，1，2，3,
+	// 小，高，扁，大
+	// 移动以后不再刷新
+	PD->GetWindowRect(&m_rDialog); //o<<"m_rDialog=">>m_rDialog;
+	GetExtend();
+	InitSmall(); // 小
+	InitThin(); // 高
+	InitFlat(); // 扁
+	InitBig(); // 大
+}
+
+#define HEIGHT_LOWER 4
+#define WIDTH_NARROW 2
+void CMyZoom::GetExtend()
+{
+	CRect rd,rd0,rd1;
+	//PD->GetWindowRect(&rd); 
+	rd=m_rDialog; //o<<"rd=">>rd;
+
+	m_nWidth_d[0]=rd.Width();
+	m_nWidth_d[1]=m_nGeo[5]-m_nGeo[0]*WIDTH_NARROW-m_nGeo[4]; // 把竖滚动条宽与标题栏等同 
+	//o<<"m_nWidth_d[1]=">>m_nWidth_d[1];
+	m_nExtend[0]=m_nWidth_d[1]-m_nWidth_d[0]; // 对话框宽度变化
+	//o<<"m_nExtend[0]=">>m_nExtend[0];
+
+	m_nHeight_d[0]=rd.Height();
+	m_nHeight_d[1]=m_nGeo[6]-m_nGeo[4]*HEIGHT_LOWER; // 托盘高为标题栏高的2倍
+	//o<<"m_nHeight_d[1]=">>m_nHeight_d[1];
+	m_nExtend[1]=m_nHeight_d[1]-m_nHeight_d[0]; // 对话框高度变化
+	//o<<"m_nExtend[1]=">>m_nExtend[1];
+
+	CPoint ptx(m_nExtend[0],0);
+	m_pXExtend=ptx; //o<<"m_pXExtend=">>m_pXExtend;
+
+	CPoint pty(0,m_nExtend[1]);
+	m_pYExtend=pty; //o<<"m_pYExtend=">>m_pYExtend;
+}
+
+// 只初始化一次
+void CMyZoom::InitBitmap()
+{
+	// 载入图标
+	m_bZoomVertical[0].LoadBitmap(IDB_BITMAP_ARROW_SOUTH);
+	m_bZoomVertical[1].LoadBitmap(IDB_BITMAP_ARROW_NORTH);
+
+	m_bZoomHorizon[0].LoadBitmap(IDB_BITMAP_ARROW_EAST);
+	m_bZoomHorizon[1].LoadBitmap(IDB_BITMAP_ARROW_WEST);
+}
+
+// 把相对于屏幕坐标转换成相对客户区的坐标
+CRect ChangeTo(CRect r)
+{
+	CPoint pt0(r.left,r.top),pt=pt0;
+	ScreenToClient(PD->GetSafeHwnd(),&pt);
+	pt-=pt0;
+
+	CRect rc=r;
+	rc.OffsetRect(pt);
+	return rc;
+}
+
+#define DISPR_FOUR(ecr) \
+	o<<ecr>>": ">>m_rControl[ecr][es_small]>>", ">>m_rControl[ecr][es_flat]>>", "\
+>>m_rControl[ecr][es_thin]>>", ">>m_rControl[ecr][es_big]
+
+#define DISPR_ALL \
+if(1){\
+	int i=-1;\
+	while(++i<COUNT_CONTROL){\
+		DISPR_FOUR(i);\
+	}\
+}
+
+#define GETR(r,p) p->GetWindowRect(r)
+
+#define GETR_SMALL(p,ecr) \
+	if(1){\
+		CRect r;\
+		GETR(r,p);\
+		m_rControl[ecr][es_small]=ChangeTo(r);\
+	}
+		//o<<"m_rControl[">>ecr>>"][">>es_small>>"]=">>m_rControl[ecr][es_small];\
+	//}
+
+void CMyZoom::InitSmall() // 小
+{
+	//GETR_SMALL(PD							,ecr_dialog); // 0
+	m_rControl[ecr_dialog][es_small]=m_rDialog;
+	GETR_SMALL(PD->m_pRichClipboard			,ecr_rclipboard); // 1
+	GETR_SMALL(PD->m_pStaticZoomVertical	,ecr_szoom_ver); // 2
+	GETR_SMALL(PD->m_pStaticZoomHorizon		,ecr_szoom_hor); // 3
+	GETR_SMALL(PD->m_pStaticIndexLine		,ecr_sindex); // 4
+	GETR_SMALL(PD->m_pStaticCountLine		,ecr_scount); // 5
+	GETR_SMALL(PD->m_pCheckSave				,ecr_ksave); // 6
+	GETR_SMALL(PD->m_pCheckAutoPaste		,ecr_kpaste); // 7
+	GETR_SMALL(PD->m_pCheckAddOver			,ecr_kaddover); // 8
+	GETR_SMALL(PD->m_pStaticClearEmptyLine	,ecr_sclear); // 9
+	GETR_SMALL(PD->m_pStaticNumberSerial	,ecr_snumber); // 10
+	GETR_SMALL(PD->m_pStaticInfo			,ecr_sinfo); // 11
+	GETR_SMALL(PD->m_pEditNetFileName		,ecr_efilename); // 12
+	GETR_SMALL(PD->m_pProgressCtrlColor		,ecr_pbar); // 13
+	GETR_SMALL(PD->m_pComboParam			,ecr_cparam); // 14
+	GETR_SMALL(PD->m_pStaticInfoMore		,ecr_smore); // 15	
+
+}
+
+#define GETR_THIN(p,ecr) \
+	if(1){\
+		m_rControl[ecr][es_thin]=m_rControl[ecr][es_small];\
+		m_rControl[ecr][es_thin]+=m_pYExtend;\
+	}
+	//	o<<"m_rControl[">>ecr>>"][">>es_small>>"]=">>m_rControl[ecr][es_small];\
+	//}
+void CMyZoom::InitThin() // 高
+{
+	m_rControl[ecr_dialog][es_thin]=m_rControl[ecr_dialog][es_small]; // 0
+	m_rControl[ecr_dialog][es_thin].top=m_nGeo[1];
+	m_rControl[ecr_dialog][es_thin].bottom=m_rControl[ecr_dialog][es_thin].top+m_nHeight_d[1];
+
+	m_rControl[ecr_rclipboard][es_thin]=m_rControl[ecr_rclipboard][es_small]; // 1
+	m_rControl[ecr_rclipboard][es_thin].bottom+=m_nExtend[1];
+
+	GETR_THIN(PD->m_pStaticZoomVertical		,ecr_szoom_ver); // 2
+	GETR_THIN(PD->m_pStaticZoomHorizon		,ecr_szoom_hor); // 3
+	GETR_THIN(PD->m_pStaticIndexLine		,ecr_sindex); // 4
+	GETR_THIN(PD->m_pStaticCountLine		,ecr_scount); // 5
+	GETR_THIN(PD->m_pCheckSave				,ecr_ksave); // 6
+	GETR_THIN(PD->m_pCheckAutoPaste			,ecr_kpaste); // 7
+	GETR_THIN(PD->m_pCheckAddOver			,ecr_kaddover); // 8
+	GETR_THIN(PD->m_pStaticClearEmptyLine	,ecr_sclear); // 9
+	GETR_THIN(PD->m_pStaticNumberSerial		,ecr_snumber); // 10
+	GETR_THIN(PD->m_pStaticInfo				,ecr_sinfo); // 11
+	GETR_THIN(PD->m_pEditNetFileName		,ecr_efilename); // 12
+	GETR_THIN(PD->m_pProgressCtrlColor		,ecr_pbar); // 13
+	GETR_THIN(PD->m_pComboParam				,ecr_cparam); // 14
+	GETR_THIN(PD->m_pStaticInfoMore			,ecr_smore); // 15	
+
+}
+
+void CMyZoom::InitFlat() // 扁
+{
+	m_rControl[ecr_dialog][es_flat]=m_rControl[ecr_dialog][es_small]; // 0
+	m_rControl[ecr_dialog][es_flat].left=m_nGeo[0];
+	m_rControl[ecr_dialog][es_flat].right=m_rControl[ecr_dialog][es_flat].left+m_nWidth_d[1];
+
+	m_rControl[ecr_rclipboard][es_flat]=m_rControl[ecr_rclipboard][es_small]; // 1
+	m_rControl[ecr_rclipboard][es_flat].right+=m_nExtend[0];
+
+	int i=1;
+	while(++i<COUNT_CONTROL){
+		m_rControl[i][es_flat]=m_rControl[i][es_small];
+	}
+
+}
+
+#define GETR_BIG(ecr) \
+	m_rControl[ecr][es_big].left	=m_rControl[ecr][es_flat].left;\
+	m_rControl[ecr][es_big].top		=m_rControl[ecr][es_thin].top;\
+	m_rControl[ecr][es_big].right	=m_rControl[ecr][es_flat].right;\
+	m_rControl[ecr][es_big].bottom	=m_rControl[ecr][es_thin].bottom
+
+void CMyZoom::InitBig() // 大
+{
+	GETR_BIG(ecr_dialog); // 
+	GETR_BIG(ecr_rclipboard); // 
+	GETR_BIG(ecr_szoom_ver); // 
+	GETR_BIG(ecr_szoom_hor); // 
+	GETR_BIG(ecr_sindex); // 
+	GETR_BIG(ecr_scount); // 
+	GETR_BIG(ecr_ksave); // 
+	GETR_BIG(ecr_kpaste); // 
+	GETR_BIG(ecr_kaddover); // 
+	GETR_BIG(ecr_sclear); // 
+	GETR_BIG(ecr_snumber); // 
+	GETR_BIG(ecr_sinfo); // 
+	GETR_BIG(ecr_cparam); // 
+	GETR_BIG(ecr_efilename); // 
+	GETR_BIG(ecr_pbar); // 
+	GETR_BIG(ecr_smore); // 
+
+}
+void CMyZoom::GetFourState()
+{
+	GetGeo();
+	PD->GetWindowRect(&m_rDialog); //o<<"m_rDialog=">>m_rDialog;
+	GetExtend();
+	InitSmall(); // 小
+	InitThin(); // 高
+	InitFlat(); // 扁
+	InitBig(); // 大
+	//DISPR_ALL;
+	return;
+
+}
+
+#define MOVE_WINDOW(p,ecr,nStyle) \
+	p->MoveWindow(m_rControl[ecr][nStyle])
+
+void CMyZoom::MySize(int nStyle)
+{
+ 	MOVE_WINDOW(PD							,ecr_dialog,	nStyle); // 0
+ 	MOVE_WINDOW(PD->m_pRichClipboard		,ecr_rclipboard,nStyle); // 1
+ 	MOVE_WINDOW(PD->m_pStaticZoomVertical	,ecr_szoom_ver,	nStyle); // 2
+ 	MOVE_WINDOW(PD->m_pStaticZoomHorizon	,ecr_szoom_hor,	nStyle); // 3
+ 	MOVE_WINDOW(PD->m_pStaticIndexLine		,ecr_sindex,	nStyle); // 4
+ 	MOVE_WINDOW(PD->m_pStaticCountLine		,ecr_scount,	nStyle); // 5
+ 	MOVE_WINDOW(PD->m_pCheckSave			,ecr_ksave,		nStyle); // 6
+ 	MOVE_WINDOW(PD->m_pCheckAutoPaste		,ecr_kpaste,	nStyle); // 7
+ 	MOVE_WINDOW(PD->m_pCheckAddOver			,ecr_kaddover,	nStyle); // 8
+ 	MOVE_WINDOW(PD->m_pStaticClearEmptyLine	,ecr_sclear,	nStyle); // 9
+ 	MOVE_WINDOW(PD->m_pStaticNumberSerial	,ecr_snumber,	nStyle); // 10
+ 	MOVE_WINDOW(PD->m_pStaticInfo			,ecr_sinfo,		nStyle); // 11
+ 	MOVE_WINDOW(PD->m_pEditNetFileName		,ecr_efilename,	nStyle); // 12
+ 	MOVE_WINDOW(PD->m_pProgressCtrlColor	,ecr_pbar,		nStyle); // 13
+ 	MOVE_WINDOW(PD->m_pComboParam			,ecr_cparam,	nStyle); // 14
+ 	MOVE_WINDOW(PD->m_pStaticInfoMore		,ecr_smore,		nStyle); // 15
+
+	PD->m_pStaticZoomVertical->SetBitmap(m_bZoomVertical[PD->m_bZoomVertical]);
+	PD->m_pStaticZoomHorizon->SetBitmap(m_bZoomHorizon[PD->m_bZoomHorizon]);
+
+	REFRESH0; // 重绘自定义非客户区外观
+	//PD->OnPaint(); //CS::s_pMyStatusBar->MyDraw();
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------------
+// [03/03] 响应左点三角图标的响应函数
+// CClipboard2Email.cpp
+void CClipboard2EmailDlg::OnStaticZoomVertical() 
+{
+	m_bZoomVertical=!m_bZoomVertical;
+	m_nStyle=m_bZoomVertical+m_bZoomHorizon*2;
+	CS::s_pMyZoom->MySize(m_nStyle);
+	OnPaint();
+}
+
+void CClipboard2EmailDlg::OnStaticZoomHorizon() 
+{
+	m_bZoomHorizon=!m_bZoomHorizon;
+	m_nStyle=m_bZoomVertical+m_bZoomHorizon*2;
+	CS::s_pMyZoom->MySize(m_nStyle);
+	OnPaint();
+}

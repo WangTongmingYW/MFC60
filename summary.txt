@@ -1,0 +1,323 @@
+BOOL CClipboard2EmailDlgMate::TopMost()
+{
+	CRect cr;
+	GetWindowRect(PD->GetSafeHwnd(),&cr); // 取得对话框矩形
+	::SetWindowPos(PD->GetSafeHwnd(),HWND_TOPMOST, // 置顶
+		cr.left,cr.top,cr.Width(),cr.Height(),
+		SWP_NOACTIVATE); // 置顶后不激活
+
+	return TRUE;
+}
+
+BOOL CClipboard2EmailDlgMate::Transparent()
+{
+	// 一般窗口不具备 透明 属性
+	LONG dwExStyle=GetWindowLong(PD->GetSafeHwnd(),GWL_EXSTYLE);
+	if((dwExStyle&0x80000)==0x80000){ return TRUE; }// 已具备透明属性
+
+	// 不具备透明属性的, 再开启这个透明属性
+	SetWindowLong(PD->GetSafeHwnd(),GWL_EXSTYLE,dwExStyle^0x80000);
+	
+	// 处理透明属性的函数在动态链接库中
+	HINSTANCE hInst=LoadLibrary("User32.DLL"); // 载入动态链接库
+	if(!hInst){ return FALSE; } 
+
+	typedef BOOL (WINAPI *MYFUNC)(HWND,COLORREF,BYTE,DWORD); // 定义函数指针
+	MYFUNC fun=NULL;
+	//取得 SetLayeredWindowAttributes 函数指针 
+	fun=(MYFUNC)GetProcAddress(hInst,_T("SetLayeredWindowAttributes"));
+	// 完成函数调用
+	if(fun) fun(PD->GetSafeHwnd(),RGB(188,207,229),224,2); 
+	// ?BYTE bAlpha: ＝0：整个窗口透明, =255 完全不透明  
+	FreeLibrary(hInst); // 卸载动态链接库	return TRUE;
+
+	return TRUE;
+}
+
+BOOL CMyTray::ToTray() //UINT Icon,LPCTSTR szTip,UINT uID)
+{
+	NOTIFYICONDATA nid; 
+	nid.cbSize=(DWORD)sizeof(NOTIFYICONDATA); 
+	nid.hWnd=PD->GetSafeHwnd(); 
+	nid.uID=m_uID;//IDR_MAINFRAME; 
+	nid.uFlags=NIF_ICON|NIF_MESSAGE|NIF_TIP ; 
+	nid.uCallbackMessage=WM_SHOWTASK;//自定义的消息名称 
+	nid.hIcon=LoadIcon(AfxGetInstanceHandle(),MAKEINTRESOURCE(m_Icon));//IDR_MAINFRAME)); 
+	_tcscpy(nid.szTip,m_szTip);//"电子作业快递");//信息提示条  // <64
+	Shell_NotifyIcon(NIM_ADD,&nid);//在托盘区添加图标 
+	return TRUE;
+}
+BOOL CMyTray::DeleteNotifyIcon() //UINT Icon,LPCTSTR sztip,UINT uID)
+{
+	HICON hIcon;
+    hIcon=AfxGetApp()->LoadIcon(m_Icon);
+    NOTIFYICONDATA nid;
+    nid.cbSize=sizeof(NOTIFYICONDATA);
+    nid.hIcon=hIcon;
+    //CWnd *pWnd=AfxGetMainWnd();
+    nid.hWnd=PD->GetSafeHwnd();
+    _tcscpy(nid.szTip,m_szTip); // <64
+	nid.uCallbackMessage=WM_SHOWTASK;//自定义的消息名称 
+    nid.uFlags=NIF_MESSAGE|NIF_ICON|NIF_TIP;
+    nid.uID=m_uID;
+	return Shell_NotifyIcon(NIM_DELETE,&nid);
+}
+
+//private:
+//	CRect m_rCorner[4];
+void CParkCorner::MakeSiteRect()
+{
+	int sw=::GetSystemMetrics(SM_CXSCREEN),
+		sh=::GetSystemMetrics(SM_CYSCREEN),
+		nOffset=::GetSystemMetrics(SM_CYHSCROLL);
+
+	CRect rd;
+	PD->GetWindowRect(&rd);
+	int dw=rd.Width(),dh=rd.Height();
+
+	CRect r(0,0,dw,dh);
+	m_rCorner[0]=m_rCorner[1]=m_rCorner[2]=m_rCorner[3]=r;
+	CPoint 
+		pt0(nOffset,nOffset),
+		pt1(sw-nOffset-dw,nOffset),
+		pt2(nOffset,sh-nOffset-dh),
+		pt3(sw-nOffset-dw,sh-nOffset-dh);
+	CPoint pt[]={pt0,pt1,pt2,pt3};
+	int i=-1,limit=4;
+	while(++i<limit){
+		m_rCorner[i].OffsetRect(pt[i]);
+	}
+}
+
+void CParkCorner::ParkCorner(int nSite)
+{
+	PD->MoveWindow(m_rCorner+nSite);
+}
+
+/*
+nIndex一个常数，指出特定的windows显示对象。取值如下：
+0.COLOR_SCROLLBAR [0]：滚动条。
+1. COLOR_BACKGROUND [1]：windows桌面。
+2. COLOR_ACTIVECAPTION [2]：活动窗口的标题。
+3. COLOR_INACTIVECAPTION [3]:不活动窗口的标题。
+4.COLOR_MENU [4]：菜单。
+5. COLOR_WINDOW [5]：窗口背景；
+6. COLOR_WINDOWFRAME [6]：窗框；
+7.COLOR_MENUTEXT [7]：菜单正文；
+8. COLOR_WINDOWTEXT [8]：窗口正文；
+9. COLOR_CAPTIONTEXT [9]：窗口标题中的文字；
+10. COLOR_ACTIVEBORDER [10]：活动窗口的边框；
+11. COLOR_INACTIVEBORDER [11]：不活动窗口的边框；
+12.COLOR_APPWORKSPACE [12]：MDI桌面的背景；
+13.COLOR_HIGHLIGHT [13]：选定的项目背景；
+14.COLOR_HIGHLIGHTTEXT [14]：选定的项目文字；
+15. COLOR_BTNFACE [15]：按钮；
+16.COLOR_BTNSHADOW [16]：按钮的3D阴影。
+17.COLOR_GRAYTEXT [17]：灰色文字；如使用了抖动技术则为零；
+18.COLOR_BTNTEXT [18]：按钮文字；
+19.COLOR_INACTIVECAPTIONTEXT [19]：不活动窗口的文字；
+20.COLOR_BTNHIGHLIGHT [20]：按钮的3D加亮区；
+21.COLOR_3DDKSHADOW [21]：3D深阴影；
+22.COLOR_3DLIGHT [22]：3D阴影化对象的浅色；
+23. COLOR_INFOTEXT [23]：工具提示的文本色；
+24.COLOR_INFOBK [24]：工具提示的背景色；
+*/
+void CRichColorControl::MakeColorPicker()
+{
+	// 1. COLOR_BACKGROUND [1]：windows桌面。
+	// 2. COLOR_ACTIVECAPTION [2]：活动窗口的标题。
+	m_clr[0]=::GetSysColor(1);
+	m_clr[1]=::GetSysColor(2);
+	m_clr[2]=RGB(0xff,0,0,);
+
+	PD->m_pRichClipboard->GetDefaultCharFormat(m_cf[0]);
+	m_cf[2]=m_cf[1]=m_cf[0];
+	m_cf[1].dwEffects&=~CFE_AUTOCOLOR;
+    m_cf[1].dwMask|=CFM_COLOR;
+    m_cf[1].crTextColor=m_clr[1];
+	m_cf[2].dwEffects&=~CFE_AUTOCOLOR;
+    m_cf[2].dwMask|=CFM_COLOR;
+    m_cf[2].crTextColor=m_clr[2];
+
+}
+
+void CRichColorControl::SetForeColor(int nIndexColor)
+{
+	m_pRichClipboard->SetSel(0,-1);
+	m_pRichClipboard->SetSelectionCharFormat(m_cf[nIndexColor]);
+	m_pRichClipboard->SetSel(0,0);
+}
+
+void CRichColorControl::SetLineForeColor()
+{
+	//o<<"SetLineForeColor";
+	int nLineNoCur=m_pRichClipboard->LineFromChar(-1); //o<<"nLineNoCur=">>nLineNoCur;
+	int nLineCount=m_pRichClipboard->GetLineCount(); //o<<"nLineCount=">>nLineCount;
+	int nLength=m_pRichClipboard->GetTextLength(); //o<<"nLength=">>nLength;
+	CHARRANGE cr0,cr;
+	cr.cpMin=m_pRichClipboard->LineIndex(-1);
+	cr.cpMax=(nLineNoCur+1==nLineCount)?nLength:(m_pRichClipboard->LineIndex(nLineNoCur+1)); //o<<"cr=">>cr;
+	m_pRichClipboard->GetSel(cr0);
+	//o<<"cr0=">>cr0;
+	//o<<"m_cf[2]=">>m_cf[2];
+	m_pRichClipboard->SetSel(0,-1);
+	m_pRichClipboard->SetSelectionCharFormat(m_cf[0]);
+	m_pRichClipboard->SetSel(cr);
+	m_pRichClipboard->SetSelectionCharFormat(m_cf[2]);
+	m_pRichClipboard->SetSel(cr0);
+}
+
+// 一般用const修饰返回值为对象本身的情况多用于二目操作符重载函数并产生新对象的时候
+//      ┌ 1.const 修饰函数返回值                   ┌
+//  ┌─┼ 2.& 用于链式赋值                     ┌─┼
+//  ↓  └ 3.operator<< 运算符重载          ↓  └
+	const COo& operator<<(CString s)		const; // 字符串类
+	const COo& operator<<(TCHAR c)			const; // 单个字符
+	const COo& operator<<(LPTCHAR p)		const; // 字符串
+	const COo& operator<<(LPPTCHAR pp)		const; // 字符串数组
+	const COo& operator<<(float f)			const; // 单精度
+	const COo& operator<<(double d)			const; // 双精度
+	const COo& operator<<(int i)			const; // 整型
+	const COo& operator<<(UINT ui)			const; // 无符号整型
+	const COo& operator<<(LONG ul)			const; // 无符号长整型
+	const COo& operator<<(PINT pi)			const; // 整型指针
+	const COo& operator<<(PFLOAT pf)		const; // 单精度指针
+	const COo& operator<<(PDOUBLE pd)		const; // 双精度指针
+	const COo& operator<<(DWORD dw)			const; // 双字,显示16进制
+	const COo& operator<<(PDWORD pdw)		const; // 双字,显示2进制
+	const COo& operator<<(CHARRANGE cr)		const; // 字符串范围结构体
+	const COo& operator<<(CHARFORMAT cf)	const; // 字体结构体
+	const COo& operator<<(CRect rc)			const; // 矩形类
+	const COo& operator<<(CSize sz)			const; // 大小类
+	const COo& operator<<(CPoint pt)		const; // 点类
+
+	const COo& operator>>(CString s)		const;
+	const COo& operator>>(TCHAR c)			const;
+	const COo& operator>>(LPTCHAR p)		const;
+	const COo& operator>>(float f)			const;
+	const COo& operator>>(double d)			const;
+	const COo& operator>>(int i)			const;
+	const COo& operator>>(DWORD dw)			const;
+	const COo& operator>>(CHARRANGE cr)		const;
+	const COo& operator>>(CRect rc)			const;
+	const COo& operator>>(CSize sz)			const;
+	const COo& operator>>(CPoint pt)		const;
+	// 对于自定义类型, 最好是常量引用
+	// 常量防止意外修改, 参数安全
+	// 引用--则不再有构造与析构过程, 加快速度
+	// 而系统变量本来就没有这个过程
+	const COo& operator<<(const CDisplayText& dt)	const; // 显示文本文件
+	const COo& operator<<(const CArrInt& arr)		const; // 整型数组自定义类
+	const COo& operator<<(const CArrStr& arr)		const; // 字符串数组自定义类
+
+
+const COo& COo::operator<<(CString s)	const { s_str=s; MyOutInfo(1);				return *this;		 }
+const COo& COo::operator<<(TCHAR c)		const { s_str.Format(_T("\r\n\'%c\'"),(c));	return *this<<s_str; }
+const COo& COo::operator<<(LPTCHAR p)	const { s_str.Format(_T("%s"),(p));			return *this<<s_str; }
+const COo& COo::operator<<(float f)		const { s_str.Format(_T("\r\n%f"),(f));		return *this<<s_str; }
+const COo& COo::operator<<(double d)	const { s_str.Format(_T("\r\n%lf"),(d));	return *this<<s_str; }
+const COo& COo::operator<<(int i)		const { s_str.Format(_T("\r\n%d"),(i));		return *this<<s_str; }
+const COo& COo::operator<<(UINT ui)		const { s_str.Format(_T("\r\n%u"),(ui));	return *this<<s_str; }
+const COo& COo::operator<<(LONG ul)		const { s_str.Format(_T("\r\n%ul"),(ul));	return *this<<s_str; }
+
+/*
+#define COUNT_HOTKEY 2
+
+typedef struct _STRUCT_REGISTER{
+	BOOL bRegister;
+	ATOM aHotKey;
+	UINT uHotKey;
+}STRUCT_REGISTER;
+
+*/
+BOOL CGetHotKey::RegisterIt()
+{
+	//AfxMessageBox(_T("CString CGetHotKey::RegisterIt()"));
+	m_sRegister[0].bRegister=FALSE;
+	m_sRegister[1].bRegister=FALSE;
+
+	int nIndex_Hotkey=0;
+
+	int i=-1,limit=m_nCount;
+	while(++i<limit){
+		m_sRegister[nIndex_Hotkey].bRegister=::RegisterHotKey(
+			NULL,
+			m_sRegister[nIndex_Hotkey].aHotKey,
+			MOD_WIN,
+			m_caHotKey[i].uHotKey);
+
+		if(m_sRegister[nIndex_Hotkey].bRegister){
+			m_nIndex[nIndex_Hotkey]=i;
+			m_strHotKeyName[nIndex_Hotkey]=m_caHotKey[i].strHotKey;
+			if(nIndex_Hotkey==0){
+				nIndex_Hotkey++;
+				continue;
+			}
+			else if(nIndex_Hotkey==1){
+				return m_sRegister[nIndex_Hotkey].bRegister;
+			}
+		}
+	}
+	return m_sRegister[nIndex_Hotkey].bRegister;
+}
+
+BOOL CGetHotKey::UnRegisterIt()
+{
+	int i=-1,limit=COUNT_HOTKEY;
+	while(++i<limit){
+		if(m_sRegister[i].bRegister){
+			::UnregisterHotKey(NULL,m_sRegister[i].aHotKey);
+		}
+	}
+	return TRUE;
+}
+
+CGetFromClipboard::CGetFromClipboard(CRichEditCtrl* pRich)
+{
+	if(PD->m_bAddOver){
+		pRich->SetSel(-1,-1);
+		pRich->Paste();
+		int nIndexFirst=pRich->GetFirstVisibleLine();
+		int nCountLine=pRich->GetLineCount();
+		CString str;
+		str.Format(_T("|行数 %05d|"),nCountLine);
+		PD->m_pStaticCountLine->SetWindowText(str.GetBuffer(0));
+		int nDiff=nCountLine-5-nIndexFirst;
+		pRich->LineScroll(nDiff);
+		int nIndexCursor=pRich->LineFromChar(pRich->LineIndex());
+		str.Format(_T("|行序 %05d"),nIndexCursor);
+		PD->m_pStaticIndexLine->SetWindowText(str.GetBuffer(0));
+		pRich->GetWindowText(CS::s_strClipboard);
+	}
+	else{
+		pRich->SetSel(0,-1);
+		pRich->Paste();
+		pRich->SetSel(0,0);
+		pRich->GetWindowText(CS::s_strClipboard);
+	}
+
+	if(PD->m_bClear){
+		CString str;
+		PD->m_pRichClipboard->GetWindowText(str);
+		int nCount=str.Replace(_T("\r\n\r\n"),_T("\r\n")); //o<<"nCount=">>nCount; o<<str;
+		PD->m_pRichClipboard->SetWindowText(_T(""));
+		PD->m_pRichClipboard->SetWindowText(_G(str));
+	}
+}
+
+BOOL CFileInOut::EnCrypt(STRUCT_ENCRYPT*& pse)
+{
+	if(pse->size ==0){
+		return FALSE;
+	}
+	if(pse->pBuf==NULL){
+		return FALSE;
+	}
+	register unsigned int i=88,k;
+	register TCHAR *p=pse->pBuf;
+	k=pse->size;
+	do{
+		*p++^=((TCHAR)i++);	// 加解密算法
+	}while(k--);
+	return TRUE;
+}

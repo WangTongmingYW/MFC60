@@ -1,0 +1,82 @@
+// --------------------------------------------------------------------------------------------------
+// [01] 在 CXXXXApp 的头文件中声明如下： 
+protected:
+	afx_msg LRESULT OnHotKey(WPARAM wParam, LPARAM lParam);
+// --------------------------------------------------------------------------------------------------
+// [02] 在 CXXXXApp 的实现文件中插入消息宏，如下
+BEGIN_MESSAGE_MAP(CClipboard2EmailApp, CWinApp)
+	//{{AFX_MSG_MAP(CClipboard2EmailApp)
+		// NOTE - the ClassWizard will add and remove mapping macros here.
+		//    DO NOT EDIT what you see in these blocks of generated code!
+	//}}AFX_MSG
+	ON_COMMAND(ID_HELP, CWinApp::OnHelp)
+	ON_MESSAGE(WM_HOTKEY,OnHotKey) // 发送 WIN 系消息
+END_MESSAGE_MAP()
+// --------------------------------------------------------------------------------------------------
+// [03] 在 CXXXXApp 类中函数定义
+LRESULT CClipboard2EmailApp::OnHotKey(WPARAM wParam, LPARAM lParam)
+{
+	if((LOWORD(lParam)==MOD_WIN)){ //o<<1;
+		//o<<(CS::s_pGetHotKey->m_caHotKey[CS::s_pGetHotKey->m_nIndex].uHotKey);
+		if(HIWORD(lParam)==CS::s_pGetHotKey->m_caHotKey[CS::s_pGetHotKey->m_nIndex[0]].uHotKey){ 
+			//o<<"HotKey";
+			PlaySound(MAKEINTRESOURCE(IDR_WAVE1),AfxGetResourceHandle(),
+				SND_ASYNC|SND_RESOURCE|SND_NODEFAULT);//单次播放
+			if(CS::s_pRichColorControl){
+				CS::s_pRichColorControl->SetForeColor(1);
+			}
+			//PD->m_pThreadStaticShift=AfxBeginThread(ThreadStaticShift,&(PD->m_Info));
+			ThreadStaticShift(NULL);
+			PD->m_pThreadIconShift=AfxBeginThread(ThreadIconShift,&(PD->m_Info));
+			CS::s_pSendEmail=new CSendEmail(PD->m_pRichClipboard,PD->m_ept);
+			DEL((CS::s_pSendEmail));
+			if(CS::s_pRichColorControl){
+				CS::s_pRichColorControl->SetForeColor(0);
+			}
+		}
+		else if(HIWORD(lParam)==CS::s_pGetHotKey->m_caHotKey[CS::s_pGetHotKey->m_nIndex[1]].uHotKey){
+			PD->m_bShowHide=!(PD->m_bShowHide);
+			PD->ShowWindow(PD->m_bShowHide?SW_SHOW:SW_HIDE);
+		}
+		else if(HIWORD(lParam)==CS::s_pGetHotKey->m_caHotKey[CS::s_pGetHotKey->m_nIndex[2]].uHotKey){
+			TCHAR NetFileName[MAX_PATH]={0};
+			PD->m_pEditNetFileName->GetWindowText(NetFileName,MAX_PATH);
+
+			TCHAR* p=NetFileName; //o<<p;// 圆点以后不要了
+			--p;
+			while(*++p){
+				if(*p==_T('.')){
+					*p=0;
+					break;
+				}
+			}
+
+			if(_tcscmp(NetFileName,_T("HTML"))==0){
+				CS::s_pInformation=new CInformation(PD->m_pEditNetFileName,1); DEL((CS::s_pInformation));
+				MessageBeep(0);
+				LPCTSTR lpctstr=_T("\
+       你目前的网页文件名：\"HTML\" 缺乏个性，请选择：\r\n\
+[确认] 就以这个乏味的名字命名网页文件名，这虽可以，但不建议这样做；\r\n\
+[取消] 暂不输出网页文件，在界面右下角输入有个性的文件基本名，再来执行本操作。");
+				if(AfxMessageBox(lpctstr,MB_OKCANCEL|MB_ICONQUESTION)==IDCANCEL){
+					CS::s_pInformation=new CInformation(PD->m_pEditNetFileName,0); DEL((CS::s_pInformation));
+					return FALSE;
+				}
+			}
+			CS::s_pInformation=new CInformation(PD->m_pEditNetFileName,0); DEL((CS::s_pInformation));
+			CS::s_pHtmlColorKeyword=new CHtmlColorKeyword(NetFileName);
+			DEL((CS::s_pHtmlColorKeyword));
+		}
+		else if(HIWORD(lParam)==CS::s_pGetHotKey->m_caHotKey[CS::s_pGetHotKey->m_nIndex[3]].uHotKey){
+			//o<<"----";
+			CS::s_pLineInsert=new CLineInsert();
+			DEL((CS::s_pLineInsert));
+		}
+		else if(HIWORD(lParam)==CS::s_pGetHotKey->m_caHotKey[CS::s_pGetHotKey->m_nIndex[4]].uHotKey){
+			//o<<"----";
+			CS::s_pColorKeyword=new CColorKeyword();
+			DEL((CS::s_pColorKeyword));
+		}
+	}
+	return TRUE;
+}
