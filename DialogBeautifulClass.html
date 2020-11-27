@@ -1,0 +1,92 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>DialogBeautifulClass</title>
+<style type="text/css">
+.div_line_height_font_name{line-height:16px;font-family:΢���ź�;font-size:14px;}
+.Indent1{text-indent:2em;}
+.Indent2{text-indent:4em;}
+.Indent3{text-indent:6em;}
+.Indent4{text-indent:8em;}
+.Indent5{text-indent:10em;}
+.Indent6{text-indent:12em;}
+.Indent7{text-indent:14em;}
+.Indent8{text-indent:16em;}
+.Indent9{text-indent:18em;}
+.Indent10{text-indent:20em;}
+.VaryFunc{color:#000;}
+.KeyWord{color:#00F;}
+.OperChar{color:#F00;}
+.NoteLine{color:#248824;}
+.ConstStr{color:#c08000;}
+</style>
+</head>
+<body class="div_line_height_font_name">
+<div><span class="NoteLine">//&nbsp;--------------------------------------------------------------------------------------------------</span></div>
+<div><span class="NoteLine">//&nbsp;[01]&nbsp;对话框美化四项内容：</span></div>
+<div><span class="NoteLine">//&nbsp;1.边框与标题栏美化&nbsp;IDM_DIALOG_BEAUTIFUL_BORDER</span></div>
+<div><span class="NoteLine">//&nbsp;2.系统图标动感美化&nbsp;IDM_DIALOG_BEAUTIFUL_ICON</span></div>
+<div><span class="NoteLine">//&nbsp;3.标题栏右侧动感美化&nbsp;IDM_DIALOG_BEAUTIFUL_MOVE</span></div>
+<div><span class="NoteLine">//&nbsp;4.标题栏右侧涟漪美化&nbsp;IDM_DIALOG_BEAUTIFUL_RIPPLE</span></div>
+<div><span class="NoteLine">//</span></div>
+<div><span class="NoteLine">//&nbsp;--------------------------------------------------------------------------------------------------</span></div>
+<div><span class="NoteLine">//&nbsp;[02]&nbsp;类与功能</span></div>
+<div><span class="NoteLine">//&nbsp;1.MFC&nbsp;对话框基类&nbsp;CDialog&nbsp;由系统负责对话框界面的维护</span></div>
+<div><span class="NoteLine">//&nbsp;2.CDialog&nbsp;的派生类&nbsp;CMyDialog:&nbsp;在&nbsp;WM_NCPAINT&nbsp;中启动绘制</span></div>
+<div><span class="NoteLine">//&nbsp;3.CMyBeautiful&nbsp;类负责绘制，与&nbsp;CDialog&nbsp;并列被&nbsp;CMyDialog&nbsp;包含</span></div>
+<div><span class="NoteLine">//&nbsp;4.CClipboard2EmailDlg&nbsp;由&nbsp;CMyDialog&nbsp;派生，只发送重绘非客户区消息</span></div>
+<div><span class="NoteLine">//</span></div>
+<div><span class="NoteLine">//&nbsp;--------------------------------------------------------------------------------------------------</span></div>
+<div><span class="NoteLine">//&nbsp;[03]&nbsp;类的继承关系：共有三层</span></div>
+<div><span class="NoteLine">//&nbsp;1.第一层：CDialog&nbsp;和&nbsp;CMyBeautiful&nbsp;派生出&nbsp;CMyDialog</span></div>
+<div><span class="NoteLine">//&nbsp;2.第二层：CMyDialog&nbsp;和&nbsp;CClipboard2EmailDlgMate&nbsp;派生出&nbsp;CClipboard2EmailDlg</span></div>
+<div></div>
+<div><span class="NoteLine">/////////////////////////////////////////////////////////////////////////////</span></div>
+<div><span class="NoteLine">//&nbsp;CMyDialog&nbsp;dialog</span></div>
+<div><span class="KeyWord"><b>#include</b></span><span class="VaryFunc">&nbsp;&quot;</span><span class="ConstStr">MyBeautiful.h</span><span class="VaryFunc">&quot;</span></div>
+<div><span class="KeyWord"><b>class</b></span><span class="VaryFunc">&nbsp;CMyDialog&nbsp;</span><span class="OperChar">:</span></div>
+<div><span class="VaryFunc">&nbsp;&nbsp;</span><span class="KeyWord"><b>public</b></span><span class="VaryFunc">&nbsp;CDialog&nbsp;</span><span class="NoteLine">//&nbsp;对话框基类，由系统负责维护对话框界面等</span></div>
+<div><span class="OperChar">,</span><span class="VaryFunc">&nbsp;</span><span class="KeyWord"><b>public</b></span><span class="VaryFunc">&nbsp;CMyBeautiful&nbsp;</span><span class="NoteLine">//&nbsp;用于美化窗口非客户区</span></div>
+<div><span class="OperChar">{</span></div>
+<div><span class="NoteLine">//&nbsp;Construction</span></div>
+<div><span class="NoteLine">//&nbsp;...</span></div>
+<div><span class="NoteLine">//&nbsp;--------------------------------------------------------------------------------------------------</span></div>
+<div><span class="NoteLine">//&nbsp;[04]</span></div>
+<div><span class="KeyWord"><b>#include</b></span><span class="VaryFunc">&nbsp;&quot;</span><span class="ConstStr">Clipboard2EmailDlgMate.h</span><span class="VaryFunc">&quot;</span></div>
+<div><span class="KeyWord"><b>#include</b></span><span class="VaryFunc">&nbsp;&quot;</span><span class="ConstStr">MyDialog.h</span><span class="VaryFunc">&quot;</span></div>
+<div><span class="KeyWord"><b>class</b></span><span class="VaryFunc">&nbsp;CClipboard2EmailDlg&nbsp;</span></div>
+<div><span class="OperChar">:</span><span class="VaryFunc">&nbsp;</span><span class="KeyWord"><b>public</b></span><span class="VaryFunc">&nbsp;CMyDialog&nbsp;</span><span class="NoteLine">//&nbsp;负责美化非客户区</span></div>
+<div><span class="OperChar">,</span><span class="VaryFunc">&nbsp;</span><span class="KeyWord"><b>public</b></span><span class="VaryFunc">&nbsp;CClipboard2EmailDlgMate&nbsp;</span><span class="NoteLine">//&nbsp;函数集</span></div>
+<div><span class="OperChar">{</span></div>
+<div><span class="NoteLine">//&nbsp;Construction</span></div>
+<div><span class="NoteLine">//&nbsp;...</span></div>
+<div><span class="NoteLine">//&nbsp;--------------------------------------------------------------------------------------------------</span></div>
+<div><span class="NoteLine">//&nbsp;[05]&nbsp;绘图宏：定义在&nbsp;Clipboard2Email.dsm&nbsp;文件里</span></div>
+<div><span class="KeyWord"><b>#define</b></span><span class="VaryFunc">&nbsp;REFRESH0&nbsp;</span><span class="OperChar">\</span></div>
+<div class="Indent1"><span class="KeyWord"><b>if</b></span><span class="OperChar">(</span><span class="VaryFunc">1</span><span class="OperChar">){\</span></div>
+<div class="Indent2"><span class="VaryFunc">CMyBeautiful&nbsp;mb</span><span class="OperChar">;\</span></div>
+<div class="Indent2"><span class="VaryFunc">mb</span><span class="OperChar">.</span><span class="VaryFunc">bFrameIt</span><span class="OperChar">();\</span></div>
+<div class="Indent1"><span class="OperChar">}</span></div>
+<div><span class="NoteLine">//&nbsp;--------------------------------------------------------------------------------------------------</span></div>
+<div><span class="NoteLine">//&nbsp;[06]&nbsp;绘图事件</span></div>
+<div><span class="NoteLine">//&nbsp;注意：ON_WM_NCPAINT()&nbsp;在子类&nbsp;CClipboard2EmailDlg&nbsp;中加入这个消息，这个才会得到执行</span></div>
+<div><span class="KeyWord"><b>void</b></span><span class="VaryFunc">&nbsp;CMyDialog</span><span class="OperChar">::</span><span class="VaryFunc">OnNcPaint</span><span class="OperChar">()</span><span class="VaryFunc">&nbsp;</span></div>
+<div><span class="OperChar">{</span></div>
+<div class="Indent1"><span class="NoteLine">//&nbsp;TODO:&nbsp;Add&nbsp;your&nbsp;message&nbsp;handler&nbsp;code&nbsp;here</span></div>
+<div class="Indent1"><span class="NoteLine">//o&lt;&lt;&quot;bFrameIt()&quot;;</span></div>
+<div class="Indent1"><span class="VaryFunc">bFrameIt</span><span class="OperChar">();</span><span class="NoteLine">//(CS::s_pCab);&nbsp;&nbsp;//&nbsp;CMyBeautiful::bFrameIt(CString&nbsp;strCaption);</span></div>
+<div class="Indent1"><span class="NoteLine">//&nbsp;禁止系统重画非客户区</span></div>
+<div class="Indent1"><span class="NoteLine">//&nbsp;Do&nbsp;not&nbsp;call&nbsp;CDialog::OnNcPaint()&nbsp;for&nbsp;painting&nbsp;messages&nbsp;</span></div>
+<div><span class="OperChar">}</span></div>
+<div><span class="NoteLine">//&nbsp;--------------------------------------------------------------------------------------------------</span></div>
+<div><span class="NoteLine">//&nbsp;[07]&nbsp;在&nbsp;Clipboard2EmailDlg.cpp&nbsp;把非客户区遭受破坏的消息加入到通知的队列中</span></div>
+<div><span class="VaryFunc">BEGIN_MESSAGE_MAP</span><span class="OperChar">(</span><span class="VaryFunc">CClipboard2EmailDlg</span><span class="OperChar">,</span><span class="VaryFunc">&nbsp;CDialog</span><span class="OperChar">)</span></div>
+<div class="Indent1"><span class="NoteLine">//{{AFX_MSG_MAP(CClipboard2EmailDlg)</span></div>
+<div class="Indent1"><span class="OperChar">...</span></div>
+<div class="Indent1"><span class="VaryFunc">ON_WM_NCPAINT</span><span class="OperChar">()</span><span class="VaryFunc">&nbsp;</span><span class="NoteLine">//!!!!!&nbsp;这条太重要了，它在父类CMyDialog中处理这个消息</span></div>
+<div class="Indent1"><span class="OperChar">...</span></div>
+<div class="Indent1"><span class="NoteLine">//}}AFX_MSG_MAP</span></div>
+<div><span class="VaryFunc">END_MESSAGE_MAP</span><span class="OperChar">()</span></div>
+</body>
+</html>
