@@ -1,2 +1,1 @@
-# MFC60
-Microsoft Visual C++
+本目录将列出一些MFC6.0的编程技巧
